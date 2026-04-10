@@ -44,6 +44,23 @@ cp .env.example .env
 3. Run the Ansible playbook (`ansible/playbooks/site.yml`) to harden the box, install Docker, deploy the bot, and wire up nginx.
 4. Push the Telegram token + Anthropic key to the VM's `/opt/openclaw/.env` (mode 600, owned by root).
 
+## HTTPS / firewall note
+
+The Telegram bot only needs **outbound** network access (it long-polls
+`api.telegram.org`). Nginx + the domain are just a health-check facade.
+
+If your VM's cloud provider firewall blocks inbound 443 (many default
+Tencent Cloud / Lighthouse images only open 22, 80, 3389), Cloudflare will
+return **522** for `https://claw.biswas.me`. Fix by doing **one** of:
+
+1. **Preferred** — open TCP 443 in the cloud provider's security group.
+   The self-signed origin cert installed by this playbook then works with
+   Cloudflare's default "Full" SSL mode.
+2. Set SSL/TLS mode to **Flexible** in the Cloudflare dashboard
+   (`biswas.me → SSL/TLS → Overview`). Less secure (CF↔origin over HTTP).
+
+Either way, the bot itself keeps working.
+
 ## Morning checklist (if I went to sleep mid-bootstrap)
 
 If only infrastructure is provisioned and Telegram/Anthropic keys are missing, complete step 4 by running on the VM:

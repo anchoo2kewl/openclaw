@@ -2,10 +2,19 @@
 # Cloudflare-proxied, Full (strict) origin cert.
 
 server {
-    listen 80;
-    listen [::]:80;
-    server_name {{ claw_hostname }};
-    return 301 https://$host$request_uri;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name {{ claw_hostname }} _;
+
+    location = /health {
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        default_type text/plain;
+        return 200 "openclaw — bot online\n";
+    }
 }
 
 server {
