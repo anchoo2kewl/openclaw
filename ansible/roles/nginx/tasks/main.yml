@@ -1,0 +1,66 @@
+---
+- name: Install nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+
+- name: Ensure SSL dir exists
+  ansible.builtin.file:
+    path: "{{ nginx_ssl_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Upload Cloudflare origin certificate
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../secrets/claw.biswas.me.crt"
+    dest: "{{ nginx_cert_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
+- name: Upload Cloudflare origin key
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../secrets/claw.biswas.me.key"
+    dest: "{{ nginx_key_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  notify: reload nginx
+
+- name: Download Cloudflare origin CA root (for client auth / stapling)
+  ansible.builtin.get_url:
+    url: https://developers.cloudflare.com/ssl/static/origin_ca_rsa_root.pem
+    dest: "{{ nginx_ssl_dir }}/cloudflare_origin_ca.pem"
+    mode: "0644"
+    force: false
+
+- name: Remove default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: reload nginx
+
+- name: Deploy nginx site for openclaw
+  ansible.builtin.template:
+    src: claw.conf.j2
+    dest: /etc/nginx/sites-available/claw.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
+- name: Enable claw site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/claw.conf
+    dest: /etc/nginx/sites-enabled/claw.conf
+    state: link
+  notify: reload nginx
+
+- name: Ensure nginx is enabled + running
+  ansible.builtin.service:
+    name: nginx
+    enabled: true
+    state: started

@@ -1,0 +1,66 @@
+---
+- name: Sync bot source to host
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../bot/"
+    dest: "{{ claw_install_dir }}/bot/"
+    delete: true
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=__pycache__"
+
+- name: Sync helper scripts
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../scripts/"
+    dest: "{{ claw_install_dir }}/scripts/"
+    delete: true
+    rsync_opts:
+      - "--exclude=.git"
+
+- name: Ensure scripts are executable
+  ansible.builtin.file:
+    path: "{{ claw_install_dir }}/scripts"
+    mode: "0755"
+    state: directory
+    recurse: true
+
+- name: Deploy placeholder .env if missing
+  ansible.builtin.copy:
+    dest: "{{ claw_install_dir }}/.env"
+    mode: "0600"
+    owner: root
+    group: root
+    force: false
+    content: |
+      # openclaw runtime config
+      # Populate these values via scripts/finish-setup.sh
+      TELEGRAM_BOT_TOKEN=
+      TELEGRAM_ALLOWED_USER_IDS=
+      ANTHROPIC_API_KEY=
+      CLAUDE_MODEL=claude-sonnet-4-5
+
+- name: Check if .env has a telegram token
+  ansible.builtin.shell: |
+    set -e
+    grep -E '^TELEGRAM_BOT_TOKEN=.+' {{ claw_install_dir }}/.env >/dev/null
+  register: env_ready
+  failed_when: false
+  changed_when: false
+
+- name: Build bot image (always)
+  ansible.builtin.command:
+    cmd: docker compose -f {{ claw_install_dir }}/bot/docker-compose.yml build
+  changed_when: true
+
+- name: Start bot stack when .env is populated
+  ansible.builtin.command:
+    cmd: docker compose -f {{ claw_install_dir }}/bot/docker-compose.yml up -d
+  when: env_ready.rc == 0
+  changed_when: true
+
+- name: Warn when .env is missing secrets
+  ansible.builtin.debug:
+    msg: |
+      /opt/openclaw/.env does not yet contain TELEGRAM_BOT_TOKEN.
+      Run: sudo {{ claw_install_dir }}/scripts/finish-setup.sh
+      to populate secrets and start the bot.
+  when: env_ready.rc != 0

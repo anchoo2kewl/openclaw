@@ -1,0 +1,21 @@
+---
+# Non-secret defaults. Secrets live in /opt/openclaw/.env on the target host
+# (see scripts/finish-setup.sh) and are NEVER committed or templated from here.
+
+claw_install_dir: /opt/openclaw
+claw_workspace_dir: /opt/openclaw/workspace
+claw_claude_home: /opt/openclaw/claude-home
+claw_hostname: claw.biswas.me
+claw_repo_url: https://github.com/anchoo2kewl/openclaw.git
+claw_repo_ref: main
+
+docker_compose_version: v2.29.7
+
+nginx_ssl_dir: /etc/nginx/ssl
+nginx_cert_path: "{{ nginx_ssl_dir }}/claw.biswas.me.crt"
+nginx_key_path: "{{ nginx_ssl_dir }}/claw.biswas.me.key"
+
+ufw_allowed_tcp:
+  - 22
+  - 80
+  - 443

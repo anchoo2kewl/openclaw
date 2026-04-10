@@ -1,0 +1,32 @@
+---
+- name: Provision openclaw VM
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Wait for apt lock
+      ansible.builtin.shell: |
+        while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 3; done
+      changed_when: false
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 600
+
+  roles:
+    - common
+    - docker
+    - nginx
+    - bot
+
+  post_tasks:
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "openclaw provisioned on {{ inventory_hostname }} ({{ ansible_host }})"
+          - "hostname: {{ claw_hostname }}"
+          - "install dir: {{ claw_install_dir }}"
+          - "If /opt/openclaw/.env is missing Telegram/Anthropic creds, run:"
+          - "  sudo {{ claw_install_dir }}/scripts/finish-setup.sh"

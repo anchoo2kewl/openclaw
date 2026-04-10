@@ -1,0 +1,22 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openclaw/bot:latest
+    container_name: openclaw-bot
+    restart: unless-stopped
+    env_file:
+      - /opt/openclaw/.env
+    environment:
+      CLAW_WORKSPACE: /workspace
+    volumes:
+      - /opt/openclaw/workspace:/workspace
+      - /opt/openclaw/claude-home:/home/claw/.claude
+    # Outbound only; no ports exposed to host.
+    networks:
+      - openclaw
+
+networks:
+  openclaw:
+    driver: bridge
