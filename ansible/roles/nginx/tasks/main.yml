@@ -1,42 +1,8 @@
 ---
-- name: Install nginx + htpasswd tool
+- name: Install nginx
   ansible.builtin.apt:
-    name:
-      - nginx
-      - apache2-utils
+    name: nginx
     state: present
-
-- name: Check for existing dashboard password in /opt/openclaw/.env
-  ansible.builtin.shell: |
-    set -e
-    awk -F= '/^DASHBOARD_PASSWORD=/{print $2; exit}' {{ claw_install_dir }}/.env 2>/dev/null || true
-  register: existing_dash_pw
-  changed_when: false
-
-- name: Generate a random dashboard password (first run only)
-  ansible.builtin.set_fact:
-    dashboard_password: "{{ existing_dash_pw.stdout if existing_dash_pw.stdout else lookup('password', '/dev/null length=24 chars=ascii_letters,digits') }}"
-    dashboard_password_new: "{{ not existing_dash_pw.stdout }}"
-
-- name: Persist DASHBOARD_PASSWORD in /opt/openclaw/.env (first run only)
-  ansible.builtin.lineinfile:
-    path: "{{ claw_install_dir }}/.env"
-    regexp: "^DASHBOARD_PASSWORD="
-    line: "DASHBOARD_PASSWORD={{ dashboard_password }}"
-    owner: root
-    group: root
-    mode: "0600"
-    create: true
-  when: dashboard_password_new
-
-- name: Write nginx htpasswd for dashboard
-  ansible.builtin.shell: |
-    htpasswd -b -c /etc/nginx/claw.htpasswd admin '{{ dashboard_password }}'
-    chmod 640 /etc/nginx/claw.htpasswd
-    chown root:www-data /etc/nginx/claw.htpasswd
-  args:
-    creates: /etc/nginx/claw.htpasswd
-  notify: reload nginx
 
 - name: Ensure SSL dir exists
   ansible.builtin.file:
@@ -46,7 +12,7 @@
     group: root
     mode: "0750"
 
-- name: Upload Cloudflare origin certificate
+- name: Upload origin certificate
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../secrets/claw.biswas.me.crt"
     dest: "{{ nginx_cert_path }}"
@@ -55,7 +21,7 @@
     mode: "0644"
   notify: reload nginx
 
-- name: Upload Cloudflare origin key
+- name: Upload origin private key
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../secrets/claw.biswas.me.key"
     dest: "{{ nginx_key_path }}"
@@ -63,13 +29,6 @@
     group: root
     mode: "0600"
   notify: reload nginx
-
-- name: Download Cloudflare origin CA root (for client auth / stapling)
-  ansible.builtin.get_url:
-    url: https://developers.cloudflare.com/ssl/static/origin_ca_rsa_root.pem
-    dest: "{{ nginx_ssl_dir }}/cloudflare_origin_ca.pem"
-    mode: "0644"
-    force: false
 
 - name: Remove default nginx site
   ansible.builtin.file:
@@ -92,6 +51,26 @@
     dest: /etc/nginx/sites-enabled/claw.conf
     state: link
   notify: reload nginx
+
+- name: Remove legacy htpasswd file (app now handles auth itself)
+  ansible.builtin.file:
+    path: /etc/nginx/claw.htpasswd
+    state: absent
+
+- name: Ensure DASHBOARD_PASSWORD exists in /opt/openclaw/.env
+  ansible.builtin.shell: |
+    set -e
+    if ! grep -q '^DASHBOARD_PASSWORD=' {{ claw_install_dir }}/.env 2>/dev/null; then
+      PW=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)
+      printf 'DASHBOARD_PASSWORD=%s\n' "$PW" >> {{ claw_install_dir }}/.env
+      chmod 600 {{ claw_install_dir }}/.env
+      chown root:root {{ claw_install_dir }}/.env
+      echo "generated"
+    else
+      echo "kept"
+    fi
+  register: dashboard_pw_state
+  changed_when: "dashboard_pw_state.stdout == 'generated'"
 
 - name: Ensure nginx is enabled + running
   ansible.builtin.service:

@@ -28,6 +28,10 @@ func main() {
 	workspace := envOr("CLAW_WORKSPACE", "/workspace")
 	botName := envOr("BOT_NAME", "clawdy")
 	port := envOr("DASHBOARD_PORT", "8080")
+	password := strings.TrimSpace(os.Getenv("DASHBOARD_PASSWORD"))
+	if password == "" {
+		log.Printf("warning: DASHBOARD_PASSWORD is empty — login will be disabled")
+	}
 
 	if err := os.MkdirAll(workspace, 0o750); err != nil {
 		log.Fatalf("mkdir workspace: %v", err)
@@ -58,7 +62,7 @@ func main() {
 	// HTTP dashboard.
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           NewDashboard(state),
+		Handler:           NewDashboard(state, password),
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
