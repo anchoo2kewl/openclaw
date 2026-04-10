@@ -30,6 +30,20 @@ cfg.gateway.auth = cfg.gateway.auth || {};
 if (process.env.OPENCLAW_GATEWAY_TOKEN) {
   cfg.gateway.auth.token = process.env.OPENCLAW_GATEWAY_TOKEN;
 }
+// Public origin(s) that are allowed to connect to the gateway WebSocket.
+// We serve the Control UI behind our own reverse proxy, so the browser
+// Origin header is whatever the user hits from the outside — we inject
+// all configured origins into the allow-list on every restart.
+const publicOrigins = (process.env.OPENCLAW_PUBLIC_ORIGINS || "")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
+cfg.gateway.controlUi = cfg.gateway.controlUi || {};
+const existing = new Set(cfg.gateway.controlUi.allowedOrigins || []);
+existing.add("http://localhost:18789");
+existing.add("http://127.0.0.1:18789");
+for (const o of publicOrigins) existing.add(o);
+cfg.gateway.controlUi.allowedOrigins = Array.from(existing);
 // The Go bot container owns the Telegram long-poll for @clawdy. Make
 // absolutely sure the upstream gateway never tries to become a second
 // consumer — two processes racing getUpdates drops messages.
@@ -37,6 +51,7 @@ cfg.channels = cfg.channels || {};
 cfg.channels.telegram = { enabled: false };
 fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + "\n", { mode: 0o600 });
 console.log("gateway: config merged into " + path);
+console.log("gateway: allowed origins: " + cfg.gateway.controlUi.allowedOrigins.join(", "));
 ' "${CONFIG_FILE}"
 
 echo "gateway: starting on :${OPENCLAW_GATEWAY_PORT:-18789}"

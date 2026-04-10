@@ -97,6 +97,9 @@
       # become a second consumer of the bot's telegram updates.
       OPENCLAW_GATEWAY_TOKEN={{ gateway_token_value.stdout }}
       OPENCLAW_GATEWAY_PORT=18789
+      # Browser Origin headers that the gateway.controlUi.allowedOrigins
+      # list should accept. Comma-separated.
+      OPENCLAW_PUBLIC_ORIGINS=https://{{ claw_hostname }},http://{{ claw_hostname }}
   no_log: true
 
 - name: Seed users.json inside data dir if absent
