@@ -36,6 +36,18 @@
     state: absent
   notify: reload nginx
 
+- name: Deploy nginx WebSocket upgrade map (http{} scope)
+  ansible.builtin.copy:
+    dest: /etc/nginx/conf.d/websocket-map.conf
+    mode: "0644"
+    content: |
+      # Managed by ansible — enables WebSocket proxying for /gateway/*
+      map $http_upgrade $connection_upgrade {
+          default upgrade;
+          ''      close;
+      }
+  notify: reload nginx
+
 - name: Deploy nginx site for openclaw
   ansible.builtin.template:
     src: claw.conf.j2

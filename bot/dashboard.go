@@ -209,7 +209,7 @@ const dashboardHTML = `<!doctype html>
   <div style="text-align:right">
     <div class=muted style="font-size:12px;margin-bottom:6px">{{.Email}}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      {{if .HasGateway}}<a class="btn btn-primary" href="/gateway/">Open gateway</a>{{end}}
+      {{if .HasGateway}}<a class="btn btn-primary" href="/gateway-launch" target="_blank" rel="noopener">Open gateway</a>{{end}}
       <form method=POST action="/logout" style="margin:0"><button class=btn type=submit>Log out</button></form>
     </div>
   </div>
@@ -331,6 +331,22 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 	if d.hasGateway {
 		mux.Handle("/gateway/", newGatewayProxy(cfg.GatewayURL, cfg.GatewayToken, d.sessions))
 		mux.Handle("/gateway", http.RedirectHandler("/gateway/", http.StatusMovedPermanently))
+		// /gateway-launch: authed-only endpoint that redirects to
+		// /gateway/#token=<token>. Modern browsers preserve the hash
+		// fragment from Location: headers, so the upstream JS reads the
+		// token straight out of window.location.hash without the user
+		// ever seeing the WebSocket URL form.
+		mux.HandleFunc("/gateway-launch", func(w http.ResponseWriter, r *http.Request) {
+			if d.sessions.authedEmail(r) == "" {
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
+			target := "/gateway/"
+			if cfg.GatewayToken != "" {
+				target += "#token=" + cfg.GatewayToken
+			}
+			http.Redirect(w, r, target, http.StatusSeeOther)
+		})
 	}
 
 	mux.HandleFunc("/", d.handleIndex)
