@@ -7,6 +7,15 @@
     rsync_opts:
       - "--exclude=.git"
       - "--exclude=__pycache__"
+      - "--exclude=openclaw"
+
+- name: Sync gateway source to host
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../gateway/"
+    dest: "{{ claw_install_dir }}/gateway/"
+    delete: true
+    rsync_opts:
+      - "--exclude=.git"
 
 - name: Sync helper scripts
   ansible.posix.synchronize:
@@ -45,6 +54,50 @@
     owner: "10001"
     group: "10001"
     mode: "0750"
+
+- name: Ensure gateway state directory exists (bind-mounted into gateway container)
+  ansible.builtin.file:
+    path: "{{ claw_install_dir }}/gateway-state"
+    state: directory
+    owner: "10002"
+    group: "10002"
+    mode: "0750"
+
+- name: Ensure OPENCLAW_GATEWAY_TOKEN exists in /opt/openclaw/.env
+  ansible.builtin.shell: |
+    set -e
+    if ! grep -q '^OPENCLAW_GATEWAY_TOKEN=' {{ claw_install_dir }}/.env 2>/dev/null; then
+      TOKEN=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 40)
+      printf 'OPENCLAW_GATEWAY_TOKEN=%s\n' "$TOKEN" >> {{ claw_install_dir }}/.env
+      chmod 600 {{ claw_install_dir }}/.env
+      chown root:root {{ claw_install_dir }}/.env
+      echo "generated"
+    else
+      echo "kept"
+    fi
+  register: gateway_token_state
+  changed_when: "gateway_token_state.stdout == 'generated'"
+
+- name: Read OPENCLAW_GATEWAY_TOKEN back from /opt/openclaw/.env
+  ansible.builtin.shell: |
+    awk -F= '/^OPENCLAW_GATEWAY_TOKEN=/{print $2}' {{ claw_install_dir }}/.env
+  register: gateway_token_value
+  changed_when: false
+  no_log: true
+
+- name: Write gateway-only /opt/openclaw/gateway.env
+  ansible.builtin.copy:
+    dest: "{{ claw_install_dir }}/gateway.env"
+    mode: "0600"
+    owner: "10002"
+    group: "10002"
+    content: |
+      # Scoped secrets for the openclaw gateway container. Does NOT include
+      # TELEGRAM_BOT_TOKEN or ANTHROPIC_API_KEY — the gateway must never
+      # become a second consumer of the bot's telegram updates.
+      OPENCLAW_GATEWAY_TOKEN={{ gateway_token_value.stdout }}
+      OPENCLAW_GATEWAY_PORT=18789
+  no_log: true
 
 - name: Seed users.json inside data dir if absent
   ansible.builtin.copy:

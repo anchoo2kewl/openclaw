@@ -21,20 +21,21 @@ type fileEntry struct {
 }
 
 type dashView struct {
-	Bot       string
-	Model     string
-	Allowed   []int64
-	Workspace string
-	Uptime    string
-	Authed    bool
-	Email     string // logged-in user, only set on authed view
-	Users     []string
-	Sessions  []Session
-	Events    []Event
-	Files     []fileEntry
-	Logs      []string
-	CSS       template.CSS
-	Error     string // for login page only
+	Bot        string
+	Model      string
+	Allowed    []int64
+	Workspace  string
+	Uptime     string
+	Authed     bool
+	Email      string // logged-in user, only set on authed view
+	HasGateway bool
+	Users      []string
+	Sessions   []Session
+	Events     []Event
+	Files      []fileEntry
+	Logs       []string
+	CSS        template.CSS
+	Error      string // for login page only
 }
 
 // ---------- Helpers --------------------------------------------------------
@@ -207,7 +208,10 @@ const dashboardHTML = `<!doctype html>
   </div>
   <div style="text-align:right">
     <div class=muted style="font-size:12px;margin-bottom:6px">{{.Email}}</div>
-    <form method=POST action="/logout" style="margin:0"><button class=btn type=submit>Log out</button></form>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      {{if .HasGateway}}<a class="btn btn-primary" href="/gateway/">Open gateway</a>{{end}}
+      <form method=POST action="/logout" style="margin:0"><button class=btn type=submit>Log out</button></form>
+    </div>
   </div>
 </div>
 
@@ -290,18 +294,30 @@ var (
 // ---------- HTTP handlers --------------------------------------------------
 
 type dashboardServer struct {
-	state    *State
-	users    *UserStore
-	sessions *sessionStore
+	state       *State
+	users       *UserStore
+	sessions    *sessionStore
+	gatewayURL  string
+	hasGateway  bool
+}
+
+// DashboardConfig groups external wiring so main.go can plumb the gateway
+// reverse proxy in without the caller of NewDashboard growing each time.
+type DashboardConfig struct {
+	Users        *UserStore
+	GatewayURL   string // e.g. http://gateway:18789
+	GatewayToken string // shared secret for gateway.auth.token
 }
 
 // NewDashboard builds the full HTTP handler tree. Public endpoints: /,
-// /login, /logout, /health. /api/status requires auth.
-func NewDashboard(s *State, users *UserStore) http.Handler {
+// /login, /logout, /health. /api/status and /gateway/ require auth.
+func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 	d := &dashboardServer{
-		state:    s,
-		users:    users,
-		sessions: newSessionStore(12 * time.Hour),
+		state:      s,
+		users:      cfg.Users,
+		sessions:   newSessionStore(12 * time.Hour),
+		gatewayURL: cfg.GatewayURL,
+		hasGateway: cfg.GatewayURL != "",
 	}
 
 	mux := http.NewServeMux()
@@ -311,6 +327,12 @@ func NewDashboard(s *State, users *UserStore) http.Handler {
 	mux.HandleFunc("/login", d.handleLogin)
 	mux.HandleFunc("/logout", d.handleLogout)
 	mux.HandleFunc("/api/status", d.handleAPIStatus)
+
+	if d.hasGateway {
+		mux.Handle("/gateway/", newGatewayProxy(cfg.GatewayURL, cfg.GatewayToken, d.sessions))
+		mux.Handle("/gateway", http.RedirectHandler("/gateway/", http.StatusMovedPermanently))
+	}
+
 	mux.HandleFunc("/", d.handleIndex)
 	return mux
 }
@@ -339,19 +361,20 @@ func (d *dashboardServer) renderAuthedDashboard(w http.ResponseWriter, email str
 	sort.Slice(sess, func(i, j int) bool { return sess[i].UserID < sess[j].UserID })
 
 	view := dashView{
-		Bot:       s.BotName,
-		Model:     orDefault(s.Model, "(default)"),
-		Allowed:   s.Allowed,
-		Workspace: s.Workspace,
-		Uptime:    fmtUptime(time.Since(s.StartTime)),
-		Authed:    true,
-		Email:     email,
-		Users:     d.users.List(),
-		Sessions:  sess,
-		Events:    s.Events(),
-		Files:     listWorkspace(s.Workspace),
-		Logs:      s.Logs(),
-		CSS:       template.CSS(dashboardCSS),
+		Bot:        s.BotName,
+		Model:      orDefault(s.Model, "(default)"),
+		Allowed:    s.Allowed,
+		Workspace:  s.Workspace,
+		Uptime:     fmtUptime(time.Since(s.StartTime)),
+		Authed:     true,
+		Email:      email,
+		HasGateway: d.hasGateway,
+		Users:      d.users.List(),
+		Sessions:   sess,
+		Events:     s.Events(),
+		Files:      listWorkspace(s.Workspace),
+		Logs:       s.Logs(),
+		CSS:        template.CSS(dashboardCSS),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

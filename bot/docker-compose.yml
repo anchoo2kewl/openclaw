@@ -13,6 +13,9 @@ services:
       DASHBOARD_PORT: "8080"
       BOT_NAME: clawdy
       USERS_FILE: /var/lib/openclaw/users.json
+      # Point the reverse proxy at the sibling gateway container. The Go
+      # dashboard gates this with its own login cookie before forwarding.
+      GATEWAY_URL: http://gateway:18789
     volumes:
       - /opt/openclaw/workspace:/workspace
       - /opt/openclaw/claude-home:/home/claw/.claude
@@ -20,6 +23,32 @@ services:
     # Dashboard bound to loopback only — nginx (on host) proxies to it.
     ports:
       - "127.0.0.1:8080:8080"
+    depends_on:
+      - gateway
+    networks:
+      - openclaw
+
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+    image: openclaw/gateway:latest
+    container_name: openclaw-gateway
+    restart: unless-stopped
+    # Intentionally NOT using /opt/openclaw/.env here — the gateway has its
+    # own minimal secret file so it can't see TELEGRAM_BOT_TOKEN,
+    # ANTHROPIC_API_KEY, etc. Only the gateway auth token and port.
+    env_file:
+      - /opt/openclaw/gateway.env
+    environment:
+      OPENCLAW_GATEWAY_PORT: "18789"
+      OPENCLAW_STATE_DIR: /home/gateway/.openclaw
+    volumes:
+      - /opt/openclaw/gateway-state:/home/gateway/.openclaw
+    # No host port binding — only the bot (via the compose network)
+    # should ever reach the gateway.
+    expose:
+      - "18789"
     networks:
       - openclaw
 

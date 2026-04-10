@@ -111,6 +111,9 @@ func runServer() {
 		log.Warn().Msg("TELEGRAM_ALLOWED_USER_IDS is empty — bot will silently drop all messages")
 	}
 
+	gatewayURL := strings.TrimSpace(os.Getenv("GATEWAY_URL"))
+	gatewayToken := strings.TrimSpace(os.Getenv("OPENCLAW_GATEWAY_TOKEN"))
+
 	log.Info().
 		Str("bot", botName).
 		Ints64("telegram_allowed", allowed).
@@ -118,6 +121,7 @@ func runServer() {
 		Str("users_file", usersFile).
 		Int("dashboard_accounts", len(users.List())).
 		Str("dashboard_port", port).
+		Bool("gateway_proxy", gatewayURL != "").
 		Msg("openclaw starting")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -132,8 +136,12 @@ func runServer() {
 	}()
 
 	srv := &http.Server{
-		Addr:              ":" + port,
-		Handler:           NewDashboard(state, users),
+		Addr: ":" + port,
+		Handler: NewDashboard(state, DashboardConfig{
+			Users:        users,
+			GatewayURL:   gatewayURL,
+			GatewayToken: gatewayToken,
+		}),
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
