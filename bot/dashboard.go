@@ -117,8 +117,76 @@ form.login input[type=password] { width: 100%; padding: 10px 12px; background: #
 form.login input[type=password]:focus { outline: none; border-color: #2563eb; }
 form.login button { width: 100%; padding: 10px; }
 .err { color: #f87171; font-size: 13px; margin: -8px 0 12px; }
+.lede { font-size: 15px; color: #c8d0dd; }
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.features .card { padding: 16px 18px; }
+.feat { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: #e6e9ef; }
 `
 
+// The public landing page is intentionally generic — no uptime, no model,
+// no bot name, no user counts. Attackers probing the domain should learn
+// nothing about what's running here or how many users it has.
+const publicHTML = `<!doctype html>
+<html lang=en><head>
+<meta charset=utf-8>
+<meta name=viewport content='width=device-width,initial-scale=1'>
+<title>openclaw</title>
+<style>{{.CSS}}</style>
+</head><body>
+
+<div class=top>
+  <div>
+    <h1>openclaw</h1>
+    <div class=sub>Telegram-first autonomous coding.</div>
+  </div>
+  <div>
+    <a class=btn href="/login">Sign in</a>
+  </div>
+</div>
+
+<div class=card style="margin-top:18px">
+  <div class=lede>
+    Drive a sandboxed coding agent from anywhere over a simple chat interface.
+    Private by default, hosted by you, owned by you.
+  </div>
+</div>
+
+<h2>features</h2>
+<div class=features>
+  <div class=card>
+    <div class=feat>Chat-driven workflows</div>
+    <div class=muted>Send a message, get a result. Long-running agent loops stream progress back to you as they finish.</div>
+  </div>
+  <div class=card>
+    <div class=feat>Private allowlist</div>
+    <div class=muted>No signups, no public access. Only explicitly approved accounts can interact with the agent.</div>
+  </div>
+  <div class=card>
+    <div class=feat>Resumable sessions</div>
+    <div class=muted>Each account gets its own persistent conversation and a dedicated workspace on disk.</div>
+  </div>
+  <div class=card>
+    <div class=feat>Single static binary</div>
+    <div class=muted>Pure Go standard library. No framework sprawl, no runtime dependencies, easy to audit.</div>
+  </div>
+  <div class=card>
+    <div class=feat>Container sandbox</div>
+    <div class=muted>Commands run inside a disposable container with a scoped workspace volume.</div>
+  </div>
+  <div class=card>
+    <div class=feat>Cookie-based auth</div>
+    <div class=muted>Password-protected management console. No third-party identity provider required.</div>
+  </div>
+</div>
+
+<div class=foot>
+  <div>self-hosted · open source</div>
+  <div><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></div>
+</div>
+</body></html>`
+
+// The authed dashboard is the operational view — everything sensitive lives
+// here and nowhere else.
 const dashboardHTML = `<!doctype html>
 <html lang=en><head>
 <meta charset=utf-8>
@@ -131,24 +199,18 @@ const dashboardHTML = `<!doctype html>
 <div class=top>
   <div>
     <h1>openclaw <span class=muted style="font-size:14px">/ {{.Bot}}</span></h1>
-    <div class=sub><span class=dot></span>online · uptime {{.Uptime}}{{if .Authed}} · {{len .Sessions}} active session(s){{end}}</div>
+    <div class=sub><span class=dot></span>online · uptime {{.Uptime}} · {{len .Sessions}} active session(s)</div>
   </div>
   <div>
-    {{if .Authed}}
-      <form method=POST action="/logout" style="margin:0"><button class=btn type=submit>Log out</button></form>
-    {{else}}
-      <a class="btn btn-primary" href="/login">Log in</a>
-    {{end}}
+    <form method=POST action="/logout" style="margin:0"><button class=btn type=submit>Log out</button></form>
   </div>
 </div>
 
 <div class=grid>
   <div class=card><div class=k>model</div><div class=v>{{.Model}}</div></div>
-  <div class=card><div class=k>allowed users</div><div class=v>{{if .Authed}}{{if .Allowed}}{{range $i, $u := .Allowed}}{{if $i}}, {{end}}{{$u}}{{end}}{{else}}(none){{end}}{{else}}{{len .Allowed}} configured{{end}}</div></div>
-  <div class=card><div class=k>workspace</div><div class=v>{{if .Authed}}{{.Workspace}}{{else}}—{{end}}</div></div>
+  <div class=card><div class=k>allowed users</div><div class=v>{{if .Allowed}}{{range $i, $u := .Allowed}}{{if $i}}, {{end}}{{$u}}{{end}}{{else}}(none){{end}}</div></div>
+  <div class=card><div class=k>workspace</div><div class=v>{{.Workspace}}</div></div>
 </div>
-
-{{if .Authed}}
 
 <h2>sessions</h2>
 {{if .Sessions}}
@@ -175,12 +237,6 @@ const dashboardHTML = `<!doctype html>
 {{if .Logs}}<pre>{{range .Logs}}{{.}}
 {{end}}</pre>{{else}}<div class="card muted">no logs yet</div>{{end}}
 
-{{else}}
-<div class=card style="margin-top:24px">
-  <div class=muted>Log in to see active sessions, recent activity, workspace contents, and server logs.</div>
-</div>
-{{end}}
-
 <div class=foot>
   <div>refreshes every 10s</div>
   <div><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></div>
@@ -191,12 +247,12 @@ const loginHTML = `<!doctype html>
 <html lang=en><head>
 <meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
-<title>openclaw · login</title>
+<title>openclaw · sign in</title>
 <style>{{.CSS}}</style>
 </head><body>
 <form class=login method=POST action="/login">
-  <h1>openclaw <span class=muted style="font-size:14px">/ {{.Bot}}</span></h1>
-  {{if .Error}}<div class=err>{{.Error}}</div>{{end}}
+  <h1>openclaw</h1>
+  {{if .Error}}<div class=err>Invalid credentials</div>{{end}}
   <label for=password>Password</label>
   <input id=password name=password type=password autofocus required>
   <button class="btn btn-primary" type=submit>Sign in</button>
@@ -213,7 +269,8 @@ var (
 		"fmtSize": fmtSize,
 	}).Parse(dashboardHTML))
 
-	loginTmpl = template.Must(template.New("login").Parse(loginHTML))
+	publicTmpl = template.Must(template.New("public").Parse(publicHTML))
+	loginTmpl  = template.Must(template.New("login").Parse(loginHTML))
 )
 
 // ---------- HTTP handlers --------------------------------------------------
@@ -249,12 +306,23 @@ func (d *dashboardServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	authed := d.sessions.authed(r)
-	d.renderDashboard(w, authed)
+	setSecurityHeaders(w)
+	if d.sessions.authed(r) {
+		d.renderAuthedDashboard(w)
+		return
+	}
+	d.renderPublicLanding(w)
 }
 
-func (d *dashboardServer) renderDashboard(w http.ResponseWriter, authed bool) {
+func (d *dashboardServer) renderPublicLanding(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_ = publicTmpl.Execute(w, dashView{CSS: template.CSS(dashboardCSS)})
+}
+
+func (d *dashboardServer) renderAuthedDashboard(w http.ResponseWriter) {
 	s := d.state
+	sess := s.SessionsSnapshot()
+	sort.Slice(sess, func(i, j int) bool { return sess[i].UserID < sess[j].UserID })
 
 	view := dashView{
 		Bot:       s.BotName,
@@ -262,24 +330,22 @@ func (d *dashboardServer) renderDashboard(w http.ResponseWriter, authed bool) {
 		Allowed:   s.Allowed,
 		Workspace: s.Workspace,
 		Uptime:    fmtUptime(time.Since(s.StartTime)),
-		Authed:    authed,
+		Authed:    true,
+		Sessions:  sess,
+		Events:    s.Events(),
+		Files:     listWorkspace(s.Workspace),
+		Logs:      s.Logs(),
 		CSS:       template.CSS(dashboardCSS),
 	}
 
-	if authed {
-		sess := s.SessionsSnapshot()
-		sort.Slice(sess, func(i, j int) bool { return sess[i].UserID < sess[j].UserID })
-		view.Sessions = sess
-		view.Events = s.Events()
-		view.Files = listWorkspace(s.Workspace)
-		view.Logs = s.Logs()
-	}
-
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_ = dashTmpl.Execute(w, view)
+}
+
+func setSecurityHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
-	_ = dashTmpl.Execute(w, view)
 }
 
 func (d *dashboardServer) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -364,11 +430,8 @@ func (d *dashboardServer) handleAPIStatus(w http.ResponseWriter, r *http.Request
 
 func (d *dashboardServer) renderLogin(w http.ResponseWriter, errMsg string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("X-Frame-Options", "DENY")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Referrer-Policy", "no-referrer")
+	setSecurityHeaders(w)
 	_ = loginTmpl.Execute(w, dashView{
-		Bot:   d.state.BotName,
 		CSS:   template.CSS(dashboardCSS),
 		Error: errMsg,
 	})
