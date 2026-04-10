@@ -26,3 +26,8 @@ node_modules/
 # Go
 bot/openclaw
 *.exe
+
+# Playwright smoke-test artefacts
+scripts/e2e/node_modules/
+scripts/e2e/out/
+scripts/e2e/package-lock.json

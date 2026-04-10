@@ -118,8 +118,19 @@ a:hover { text-decoration: underline; }
 form.login { max-width: 340px; margin: 80px auto 0; padding: 28px; background: #141820; border: 1px solid #1f2632; border-radius: 14px; }
 form.login h1 { margin-bottom: 18px; }
 form.login label { display: block; font-size: 12px; color: #8b94a8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
-form.login input[type=email], form.login input[type=password] { width: 100%; padding: 10px 12px; background: #0b0d10; color: #e6e9ef; border: 1px solid #2a3444; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
-form.login input[type=email]:focus, form.login input[type=password]:focus { outline: none; border-color: #2563eb; }
+form.login input { width: 100%; padding: 10px 12px; background: #0b0d10; color: #e6e9ef; border: 1px solid #2a3444; border-radius: 8px; font-size: 14px; margin-bottom: 16px; font-family: inherit; box-sizing: border-box; -webkit-appearance: none; appearance: none; }
+form.login input:focus { outline: none; border-color: #2563eb; }
+/* Kill Chrome's yellow autofill background — paint the form field with
+   the same dark treatment by using a huge inset box-shadow instead. */
+form.login input:-webkit-autofill,
+form.login input:-webkit-autofill:hover,
+form.login input:-webkit-autofill:focus,
+form.login input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0b0d10 inset !important;
+  -webkit-text-fill-color: #e6e9ef !important;
+  caret-color: #e6e9ef;
+  transition: background-color 9999s ease-in-out 0s;
+}
 form.login button { width: 100%; padding: 10px; }
 .err { color: #f87171; font-size: 13px; margin: -8px 0 12px; }
 .lede { font-size: 15px; color: #c8d0dd; }
@@ -209,7 +220,7 @@ const dashboardHTML = `<!doctype html>
   <div style="text-align:right">
     <div class=muted style="font-size:12px;margin-bottom:6px">{{.Email}}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      {{if .HasGateway}}<a class="btn btn-primary" href="/gateway-launch" target="_blank" rel="noopener">Open gateway</a>{{end}}
+      {{if .HasGateway}}<a class="btn btn-primary" href="/gateway-launch">Open gateway</a>{{end}}
       <form method=POST action="/logout" style="margin:0"><button class=btn type=submit>Log out</button></form>
     </div>
   </div>
@@ -329,8 +340,14 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 	mux.HandleFunc("/api/status", d.handleAPIStatus)
 
 	if d.hasGateway {
-		mux.Handle("/gateway/", newGatewayProxy(cfg.GatewayURL, cfg.GatewayToken, d.sessions))
-		mux.Handle("/gateway", http.RedirectHandler("/gateway/", http.StatusMovedPermanently))
+		// Register BOTH /gateway and /gateway/ so the upstream JS, which
+		// tries to open wss://claw.biswas.me/gateway (no trailing slash)
+		// on the Control UI's default path, doesn't get a 301 that its
+		// WebSocket client cannot follow. The proxy itself strips the
+		// /gateway prefix before forwarding.
+		gatewayHandler := newGatewayProxy(cfg.GatewayURL, cfg.GatewayToken, d.sessions)
+		mux.Handle("/gateway/", gatewayHandler)
+		mux.Handle("/gateway", gatewayHandler)
 		// /gateway-launch: authed-only endpoint that redirects to
 		// /gateway/#token=<token>. Modern browsers preserve the hash
 		// fragment from Location: headers, so the upstream JS reads the

@@ -61,15 +61,20 @@ console.log("gateway: allowed origins: " + cfg.gateway.controlUi.allowedOrigins.
 # reaches us has therefore already been authenticated, so auto-approving
 # new pairing requests is safe and avoids a manual SSH step every time
 # a new browser / tab connects.
+#
+# We poll aggressively (every 1s) because the upstream Control UI
+# reports "pairing required" and stops retrying if the approval
+# doesn't land inside its own timeout window.
 (
     # Give the gateway a moment to open its WS listener before we start
     # poking at it with the CLI client.
-    sleep 8
-    while sleep 10; do
+    sleep 6
+    while true; do
         openclaw devices approve --latest \
             --url "ws://127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}" \
             --token "${OPENCLAW_GATEWAY_TOKEN:-}" \
             >/dev/null 2>&1 || true
+        sleep 1
     done
 ) &
 
