@@ -22,3 +22,7 @@ node_modules/
 # Ansible
 *.retry
 .ansible/
+
+# Go
+bot/openclaw
+*.exe
