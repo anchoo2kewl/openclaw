@@ -79,8 +79,20 @@ try {
 
   // 2. Open gateway in the same tab (target=_blank would spawn a new
   // page — we follow the redirect manually so we can track it).
-  log('goto', DASHBOARD_URL + '/gateway-launch');
-  await page.goto(DASHBOARD_URL + '/gateway-launch', { waitUntil: 'domcontentloaded' });
+  // Retry on 502 cold-starts (gateway container can take ~10s after a
+  // rebuild before it's ready to accept requests).
+  for (let gwAttempt = 1; gwAttempt <= 6; gwAttempt++) {
+    log('goto', DASHBOARD_URL + '/gateway-launch', `(attempt ${gwAttempt})`);
+    const resp = await page.goto(DASHBOARD_URL + '/gateway-launch', { waitUntil: 'domcontentloaded' });
+    // After the /gateway-launch 303, the final response is the gateway
+    // HTML at /gateway/... — check its status.
+    if (resp && resp.status() === 502) {
+      log('gateway 502, sleeping 5s');
+      await page.waitForTimeout(5000);
+      continue;
+    }
+    break;
+  }
   log('landed on', page.url());
   await shot(page, '03-gateway-first-load');
 
@@ -143,6 +155,43 @@ try {
     process.exitCode = 1;
   } else {
     console.log('OK: gateway chat is interactive');
+  }
+
+  // 4. Verify the injected "Back to Dashboard" bar exists on the gateway
+  //    HTML and clicking it returns us to "/" (the authed console).
+  const backLink = page.locator('#openclaw-backbar a[href="/"]');
+  if (await backLink.count() === 0) {
+    console.error('FAIL: back-to-dashboard overlay is missing from gateway HTML');
+    process.exitCode = 1;
+  } else {
+    log('clicking back-to-dashboard');
+    await Promise.all([
+      page.waitForURL(u => new URL(u).pathname === '/', { timeout: 8_000 }),
+      backLink.first().click(),
+    ]);
+    await shot(page, '06-back-to-dashboard');
+    // Sanity: the new nav bar should say "openclaw" and show "Log out".
+    if (await page.locator('nav.nav .brand').count() === 0) {
+      console.error('FAIL: authed dashboard nav did not render');
+      process.exitCode = 1;
+    } else if (await page.locator('form[action="/logout"]').count() === 0) {
+      console.error('FAIL: logout form missing from authed dashboard');
+      process.exitCode = 1;
+    } else {
+      console.log('OK: back-to-dashboard works and authed nav rendered');
+    }
+  }
+
+  // 5. Sanity-check the public landing page (hit / with no cookie).
+  await context.clearCookies();
+  await page.goto(DASHBOARD_URL + '/', { waitUntil: 'domcontentloaded' });
+  await shot(page, '07-public-landing');
+  const heroCount = await page.locator('.landing-hero h1').count();
+  if (heroCount === 0) {
+    console.error('FAIL: public landing hero did not render');
+    process.exitCode = 1;
+  } else {
+    console.log('OK: public landing rendered');
   }
 } catch (err) {
   console.error('UNEXPECTED:', err);

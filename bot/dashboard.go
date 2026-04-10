@@ -87,56 +87,298 @@ func fmtUptime(d time.Duration) string {
 // ---------- HTML templates -------------------------------------------------
 
 const dashboardCSS = `
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+  --bg:        #0a0c10;
+  --bg-soft:   #0f131a;
+  --card:      #12161f;
+  --card-2:    #171c27;
+  --border:    #1f2632;
+  --border-2:  #2a3444;
+  --fg:        #e6e9ef;
+  --fg-dim:    #c8d0dd;
+  --muted:     #8b94a8;
+  --muted-2:   #6b7589;
+  --accent:    #6366f1;
+  --accent-2:  #8b5cf6;
+  --ok:        #34d399;
+  --warn:      #f59e0b;
+  --err:       #f87171;
+  --info:      #60a5fa;
+  --radius:    12px;
+  --shadow-1:  0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
+}
 * { box-sizing: border-box; }
-body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, system-ui, sans-serif; background: #0b0d10; color: #e6e9ef; max-width: 960px; margin: 0 auto; line-height: 1.45; }
-.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-h1 { margin: 0 0 4px 0; font-size: 22px; letter-spacing: -0.01em; }
-h2 { margin: 28px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #8b94a8; font-weight: 600; }
-.sub { color: #8b94a8; font-size: 13px; margin-bottom: 20px; }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #34d399; margin-right: 6px; vertical-align: middle; }
-.card { background: #141820; border: 1px solid #1f2632; border-radius: 10px; padding: 14px 16px; margin: 6px 0; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-.grid .card .k { font-size: 11px; color: #8b94a8; text-transform: uppercase; letter-spacing: 0.06em; }
-.grid .card .v { font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums; word-break: break-all; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-td, th { padding: 6px 8px; text-align: left; border-bottom: 1px solid #1f2632; vertical-align: top; }
-th { font-size: 11px; color: #8b94a8; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
-.dir-in { color: #60a5fa; }
-.dir-out { color: #34d399; }
-.dir-error { color: #f87171; }
-pre { background: #0f131a; border: 1px solid #1f2632; border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 12px; line-height: 1.5; color: #c8d0dd; margin: 6px 0; max-height: 320px; }
-code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
-a { color: #60a5fa; text-decoration: none; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", ui-sans-serif, system-ui, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(99,102,241,0.08), transparent 60%),
+    radial-gradient(900px 500px at 90% -20%, rgba(139,92,246,0.06), transparent 60%),
+    var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--info); text-decoration: none; }
 a:hover { text-decoration: underline; }
-.muted { color: #8b94a8; }
-.foot { margin-top: 32px; padding-top: 14px; border-top: 1px solid #1f2632; font-size: 12px; color: #8b94a8; display: flex; justify-content: space-between; }
-.btn { display: inline-block; padding: 7px 14px; border-radius: 8px; background: #1f2632; color: #e6e9ef; border: 1px solid #2a3444; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; }
-.btn:hover { background: #2a3444; text-decoration: none; }
-.btn-primary { background: #2563eb; border-color: #2563eb; }
-.btn-primary:hover { background: #1d4ed8; }
-form.login { max-width: 340px; margin: 80px auto 0; padding: 28px; background: #141820; border: 1px solid #1f2632; border-radius: 14px; }
-form.login h1 { margin-bottom: 18px; }
-form.login label { display: block; font-size: 12px; color: #8b94a8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
-form.login input { width: 100%; padding: 10px 12px; background: #0b0d10; color: #e6e9ef; border: 1px solid #2a3444; border-radius: 8px; font-size: 14px; margin-bottom: 16px; font-family: inherit; box-sizing: border-box; -webkit-appearance: none; appearance: none; }
-form.login input:focus { outline: none; border-color: #2563eb; }
-/* Kill Chrome's yellow autofill background — paint the form field with
-   the same dark treatment by using a huge inset box-shadow instead. */
+code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; font-size: 0.92em; }
+.muted { color: var(--muted); }
+h1, h2, h3 { letter-spacing: -0.01em; }
+h1 { margin: 0; font-size: 22px; font-weight: 700; }
+h2 { margin: 28px 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+
+/* ---------- top nav (authed) ---------- */
+.nav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(10,12,16,0.78);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 12px 24px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; }
+.brand-mark {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: inline-flex; align-items: center; justify-content: center;
+  color: white; font-size: 14px; font-weight: 700;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+}
+.nav a.tab {
+  color: var(--fg-dim); font-size: 13px; font-weight: 500;
+  padding: 7px 12px; border-radius: 8px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.nav a.tab:hover { background: var(--card); color: var(--fg); text-decoration: none; }
+.nav .spacer { flex: 1; }
+.nav .who { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+
+/* ---------- container ---------- */
+.wrap { max-width: 1100px; margin: 0 auto; padding: 28px 24px 80px; }
+
+/* ---------- hero on authed page ---------- */
+.hero-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+.hero-title { font-size: 24px; font-weight: 700; }
+.hero-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 8px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(52,211,153,0.15); }
+
+/* ---------- cards ---------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-1);
+}
+.card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--fg); }
+
+/* ---------- stats row ---------- */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 10px; }
+.stat .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.stat .v { font-size: 24px; margin-top: 4px; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--fg); word-break: break-all; }
+.stat .hint { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
+.stat.accent { background: linear-gradient(180deg, rgba(99,102,241,0.12), rgba(99,102,241,0.02)); border-color: rgba(99,102,241,0.35); }
+
+/* ---------- two-column layout for sections ---------- */
+.cols { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 18px; }
+@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+
+.section-card { padding: 0; overflow: hidden; }
+.section-card > .hd {
+  padding: 12px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.section-card > .hd .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+.section-card > .hd .count { font-size: 11px; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+.section-card > .body { padding: 14px 18px; }
+.section-card > .body.tight { padding: 0; }
+
+/* ---------- tables ---------- */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td, th { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+tbody tr:last-child td { border-bottom: none; }
+th { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; background: var(--bg-soft); }
+.dir-in { color: var(--info); font-weight: 600; }
+.dir-out { color: var(--ok); font-weight: 600; }
+.dir-error { color: var(--err); font-weight: 600; }
+
+/* ---------- pre / logs ---------- */
+pre {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--fg-dim);
+  margin: 0;
+  max-height: 360px;
+}
+pre::-webkit-scrollbar { width: 8px; height: 8px; }
+pre::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 8px; }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 14px; border-radius: 8px;
+  background: var(--card-2); color: var(--fg); border: 1px solid var(--border-2);
+  font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none;
+  transition: background .12s ease, border-color .12s ease, transform .06s ease;
+  font-family: inherit;
+}
+.btn:hover { background: #202636; border-color: #364156; text-decoration: none; }
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 6px 18px rgba(99,102,241,0.35);
+}
+.btn-primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.btn-ghost { background: transparent; border-color: var(--border); }
+.btn-ghost:hover { background: var(--card); }
+
+/* ---------- footer ---------- */
+.foot {
+  margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+}
+
+/* ---------- login form ---------- */
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+form.login {
+  width: 100%; max-width: 380px;
+  padding: 32px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 20px 60px rgba(0,0,0,0.45);
+}
+form.login .brand { margin-bottom: 6px; }
+form.login .sublabel { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+form.login label {
+  display: block; font-size: 11px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 6px;
+  font-weight: 600;
+}
+form.login input {
+  width: 100%;
+  padding: 11px 13px;
+  background: var(--bg-soft);
+  color: var(--fg);
+  border: 1px solid var(--border-2);
+  border-radius: 9px;
+  font-size: 14px;
+  font-family: inherit;
+  -webkit-appearance: none; appearance: none;
+}
+form.login input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
 form.login input:-webkit-autofill,
 form.login input:-webkit-autofill:hover,
-form.login input:-webkit-autofill:focus,
-form.login input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px #0b0d10 inset !important;
-  -webkit-text-fill-color: #e6e9ef !important;
-  caret-color: #e6e9ef;
+form.login input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-soft) inset !important;
+  -webkit-text-fill-color: var(--fg) !important;
+  caret-color: var(--fg);
   transition: background-color 9999s ease-in-out 0s;
 }
-form.login button { width: 100%; padding: 10px; }
-.err { color: #f87171; font-size: 13px; margin: -8px 0 12px; }
-.lede { font-size: 15px; color: #c8d0dd; }
-.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.features .card { padding: 16px 18px; }
-.feat { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: #e6e9ef; }
+form.login button { width: 100%; padding: 11px; margin-top: 22px; font-size: 14px; }
+.err { color: var(--err); font-size: 13px; margin-top: 14px; padding: 10px 12px; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; }
+
+/* ---------- public landing ---------- */
+.landing { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+.landing-nav { display: flex; align-items: center; padding: 18px 0; }
+.landing-nav .spacer { flex: 1; }
+.landing-hero {
+  padding: 72px 0 56px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 56px;
+}
+.landing-hero .eyebrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border: 1px solid var(--border-2); border-radius: 999px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+  background: var(--card); margin-bottom: 18px;
+}
+.landing-hero h1 {
+  font-size: 56px; line-height: 1.05; font-weight: 800; letter-spacing: -0.025em;
+  margin: 0 auto; max-width: 760px;
+}
+.landing-hero h1 span {
+  background: linear-gradient(135deg, #c4b5fd, #818cf8);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.landing-hero p.tagline {
+  margin: 22px auto 0; max-width: 620px; font-size: 17px; color: var(--fg-dim); line-height: 1.55;
+}
+.landing-hero .cta { display: flex; gap: 12px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+
+.section { margin-bottom: 64px; }
+.section .eyebrow-lbl {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--accent); font-weight: 700; margin-bottom: 8px;
+}
+.section h2.big { font-size: 28px; margin: 0 0 10px; color: var(--fg); text-transform: none; letter-spacing: -0.01em; }
+.section .lede { font-size: 15px; color: var(--muted); max-width: 640px; }
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px; margin-top: 28px;
+}
+.feature {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  transition: border-color .2s ease, transform .2s ease;
+}
+.feature:hover { border-color: var(--border-2); transform: translateY(-2px); }
+.feature .icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25));
+  border: 1px solid rgba(99,102,241,0.35);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+  font-size: 18px;
+}
+.feature h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--fg); }
+.feature p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+.steps {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px; margin-top: 28px;
+  counter-reset: step;
+}
+.step {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  position: relative;
+}
+.step::before {
+  counter-increment: step;
+  content: counter(step);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white; font-weight: 700; font-size: 13px;
+  margin-bottom: 12px;
+}
+.step h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.step p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+.stack {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px;
+}
+.stack span {
+  padding: 6px 12px; border: 1px solid var(--border-2); border-radius: 999px;
+  font-size: 12px; color: var(--fg-dim); background: var(--card);
+}
 `
 
 // The public landing page is intentionally generic — no uptime, no model,
@@ -146,59 +388,132 @@ const publicHTML = `<!doctype html>
 <html lang=en><head>
 <meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
-<title>openclaw</title>
+<title>openclaw — self-hosted coding agent control plane</title>
 <style>{{.CSS}}</style>
 </head><body>
 
-<div class=top>
-  <div>
-    <h1>openclaw</h1>
-    <div class=sub>Telegram-first autonomous coding.</div>
+<div class=landing>
+  <div class=landing-nav>
+    <div class=brand>
+      <div class=brand-mark>◆</div>
+      <div>openclaw</div>
+    </div>
+    <div class=spacer></div>
+    <a class="btn btn-ghost" href="https://github.com/anchoo2kewl/openclaw">GitHub</a>
+    <a class="btn btn-primary" href="/login" style="margin-left:8px">Sign in</a>
   </div>
-  <div>
-    <a class=btn href="/login">Sign in</a>
+
+  <section class=landing-hero>
+    <div class=eyebrow>● Self-hosted · open source · MIT</div>
+    <h1>Your private <span>coding agent</span>,<br>reachable from anywhere.</h1>
+    <p class=tagline>
+      Drive a sandboxed agent from a chat interface on any device.
+      Private by default, hosted on your own box, owned by you.
+    </p>
+    <div class=cta>
+      <a class="btn btn-primary" href="/login">Sign in to your console</a>
+      <a class="btn btn-ghost" href="https://github.com/anchoo2kewl/openclaw">View on GitHub →</a>
+    </div>
+  </section>
+
+  <section class=section>
+    <div class=eyebrow-lbl>FEATURES</div>
+    <h2 class=big>Everything you need, nothing you don't.</h2>
+    <p class=lede>A minimal operator console over a focused set of primitives: chat, sessions, a workspace, and a handful of integrations.</p>
+
+    <div class=features-grid>
+      <div class=feature>
+        <div class=icon>💬</div>
+        <h3>Chat-driven workflows</h3>
+        <p>Send a message, get a result. Long-running agent loops stream progress back to you as they finish.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>🛡</div>
+        <h3>Private allowlist</h3>
+        <p>No signups, no public access. Only explicitly approved accounts can interact with the agent.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>⏱</div>
+        <h3>Resumable sessions</h3>
+        <p>Each account gets its own persistent conversation and a dedicated workspace on disk.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>⚙</div>
+        <h3>Container sandbox</h3>
+        <p>Commands run inside a disposable container with a scoped workspace volume and no host access.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>📈</div>
+        <h3>Operator console</h3>
+        <p>Live view of sessions, recent activity, workspace files, and server logs — all in one place.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>🔌</div>
+        <h3>Integrated gateway</h3>
+        <p>Embedded upstream coding-agent gateway for a full browser chat UI, proxied through your own auth.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>📦</div>
+        <h3>Single static binary</h3>
+        <p>Pure Go standard library. No framework sprawl, no runtime dependencies — easy to audit and deploy.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>🔐</div>
+        <h3>Cookie session auth</h3>
+        <p>Password-protected management console with PBKDF2-hashed credentials. No third-party IdP required.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>🧭</div>
+        <h3>Ansible-reproducible</h3>
+        <p>Every piece of the stack is templated. Blow away the VM, re-run the playbook, get the same box back.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class=section>
+    <div class=eyebrow-lbl>HOW IT WORKS</div>
+    <h2 class=big>From zero to agent in three steps.</h2>
+
+    <div class=steps>
+      <div class=step>
+        <h3>Provision</h3>
+        <p>Run the ansible playbook against any Ubuntu host. You get nginx, Docker, a hardened bot container, and a sibling gateway container — wired together.</p>
+      </div>
+      <div class=step>
+        <h3>Add accounts</h3>
+        <p>Provision operators with <code>openclaw useradd</code>. PBKDF2-hashed passwords live in a single JSON file, bind-mounted into the bot.</p>
+      </div>
+      <div class=step>
+        <h3>Sign in and chat</h3>
+        <p>Log into the console from any browser. Open the embedded gateway for a rich chat UI, or drive the agent from Telegram.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class=section>
+    <div class=eyebrow-lbl>UNDER THE HOOD</div>
+    <h2 class=big>Boring, auditable, reproducible.</h2>
+    <p class=lede>A small Go binary and a couple of containers. No background magic.</p>
+
+    <div class=stack>
+      <span>Go 1.26 · stdlib only</span>
+      <span>zerolog</span>
+      <span>PBKDF2-SHA256</span>
+      <span>nginx reverse proxy</span>
+      <span>Cloudflare origin</span>
+      <span>Docker Compose</span>
+      <span>Ansible</span>
+      <span>Claude Code CLI</span>
+      <span>Telegram Bot API</span>
+    </div>
+  </section>
+
+  <div class=foot>
+    <div>self-hosted · open source · MIT</div>
+    <div><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></div>
   </div>
 </div>
 
-<div class=card style="margin-top:18px">
-  <div class=lede>
-    Drive a sandboxed coding agent from anywhere over a simple chat interface.
-    Private by default, hosted by you, owned by you.
-  </div>
-</div>
-
-<h2>features</h2>
-<div class=features>
-  <div class=card>
-    <div class=feat>Chat-driven workflows</div>
-    <div class=muted>Send a message, get a result. Long-running agent loops stream progress back to you as they finish.</div>
-  </div>
-  <div class=card>
-    <div class=feat>Private allowlist</div>
-    <div class=muted>No signups, no public access. Only explicitly approved accounts can interact with the agent.</div>
-  </div>
-  <div class=card>
-    <div class=feat>Resumable sessions</div>
-    <div class=muted>Each account gets its own persistent conversation and a dedicated workspace on disk.</div>
-  </div>
-  <div class=card>
-    <div class=feat>Single static binary</div>
-    <div class=muted>Pure Go standard library. No framework sprawl, no runtime dependencies, easy to audit.</div>
-  </div>
-  <div class=card>
-    <div class=feat>Container sandbox</div>
-    <div class=muted>Commands run inside a disposable container with a scoped workspace volume.</div>
-  </div>
-  <div class=card>
-    <div class=feat>Cookie-based auth</div>
-    <div class=muted>Password-protected management console. No third-party identity provider required.</div>
-  </div>
-</div>
-
-<div class=foot>
-  <div>self-hosted · open source</div>
-  <div><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></div>
-</div>
 </body></html>`
 
 // The authed dashboard is the operational view — everything sensitive lives
@@ -207,67 +522,193 @@ const dashboardHTML = `<!doctype html>
 <html lang=en><head>
 <meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
-<meta http-equiv=refresh content=10>
-<title>openclaw · {{.Bot}}</title>
+<meta http-equiv=refresh content=15>
+<title>openclaw · console</title>
 <style>{{.CSS}}</style>
 </head><body>
 
-<div class=top>
-  <div>
-    <h1>openclaw <span class=muted style="font-size:14px">/ {{.Bot}}</span></h1>
-    <div class=sub><span class=dot></span>online · uptime {{.Uptime}} · {{len .Sessions}} active session(s)</div>
-  </div>
-  <div style="text-align:right">
-    <div class=muted style="font-size:12px;margin-bottom:6px">{{.Email}}</div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      {{if .HasGateway}}<a class="btn btn-primary" href="/gateway-launch">Open gateway</a>{{end}}
-      <form method=POST action="/logout" style="margin:0"><button class=btn type=submit>Log out</button></form>
+<nav class=nav>
+  <div class=nav-inner>
+    <div class=brand>
+      <div class=brand-mark>◆</div>
+      <div>openclaw</div>
+    </div>
+    <a class=tab href="/">Overview</a>
+    {{if .HasGateway}}<a class=tab href="/gateway-launch">Gateway ↗</a>{{end}}
+    <a class=tab href="#activity">Activity</a>
+    <a class=tab href="#accounts">Accounts</a>
+    <a class=tab href="#logs">Logs</a>
+    <div class=spacer></div>
+    <div class=who>
+      <span>● {{.Email}}</span>
+      <form method=POST action="/logout" style="margin:0">
+        <button class="btn btn-ghost" type=submit>Log out</button>
+      </form>
     </div>
   </div>
-</div>
+</nav>
 
-<div class=grid>
-  <div class=card><div class=k>model</div><div class=v>{{.Model}}</div></div>
-  <div class=card><div class=k>allowed telegram users</div><div class=v>{{if .Allowed}}{{range $i, $u := .Allowed}}{{if $i}}, {{end}}{{$u}}{{end}}{{else}}(none){{end}}</div></div>
-  <div class=card><div class=k>workspace</div><div class=v>{{.Workspace}}</div></div>
-</div>
+<main class=wrap>
 
-<h2>dashboard accounts</h2>
-{{if .Users}}
-<table><thead><tr><th>username</th><th>email</th></tr></thead><tbody>
-{{range .Users}}<tr><td><code>{{.Username}}</code></td><td>{{.Email}}</td></tr>{{end}}
-</tbody></table>
-{{else}}<div class="card muted">no accounts provisioned</div>{{end}}
+  <div class=hero-row>
+    <div>
+      <div class=hero-title>Operator console</div>
+      <div class=hero-sub><span class=dot></span>online · uptime {{.Uptime}} · refreshes every 15s</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      {{if .HasGateway}}<a class="btn btn-primary" href="/gateway-launch">Open gateway →</a>{{end}}
+    </div>
+  </div>
 
-<h2>telegram sessions</h2>
-{{if .Sessions}}
-<table><thead><tr><th>user</th><th>session_id</th><th>cwd</th></tr></thead><tbody>
-{{range .Sessions}}<tr><td>{{.UserID}}</td><td><code>{{if .SessionID}}{{.SessionID}}{{else}}—{{end}}</code></td><td><code>{{.Cwd}}</code></td></tr>{{end}}
-</tbody></table>
-{{else}}<div class="card muted">no active sessions yet</div>{{end}}
+  <!-- ---- stat cards ---- -->
+  <div class=stats>
+    <div class="card stat accent">
+      <div class=k>Active sessions</div>
+      <div class=v>{{len .Sessions}}</div>
+      <div class=hint>Telegram conversations currently held</div>
+    </div>
+    <div class="card stat">
+      <div class=k>Messages seen</div>
+      <div class=v>{{len .Events}}</div>
+      <div class=hint>Ring-buffered (last 200)</div>
+    </div>
+    <div class="card stat">
+      <div class=k>Operators</div>
+      <div class=v>{{len .Users}}</div>
+      <div class=hint>Dashboard accounts provisioned</div>
+    </div>
+    <div class="card stat">
+      <div class=k>Telegram allowlist</div>
+      <div class=v>{{len .Allowed}}</div>
+      <div class=hint>User ids allowed to DM the bot</div>
+    </div>
+  </div>
 
-<h2>recent activity</h2>
-{{if .Events}}
-<table><thead><tr><th style="width:72px">time</th><th style="width:60px">dir</th><th style="width:100px">user</th><th>text</th></tr></thead><tbody>
-{{range .Events}}<tr><td class=muted>{{fmtTime .Time}}</td><td class="dir-{{.Direction}}">{{.Direction}}</td><td>{{.UserID}}</td><td>{{.Text}}</td></tr>{{end}}
-</tbody></table>
-{{else}}<div class="card muted">no messages yet</div>{{end}}
+  <!-- ---- configuration strip ---- -->
+  <div class=stats style="margin-top:12px">
+    <div class=card>
+      <div class=k style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Model</div>
+      <div style="font-size:14px;font-variant-numeric:tabular-nums;margin-top:4px">{{.Model}}</div>
+    </div>
+    <div class=card>
+      <div class=k style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Workspace</div>
+      <div style="font-size:14px;font-variant-numeric:tabular-nums;margin-top:4px;word-break:break-all"><code>{{.Workspace}}</code></div>
+    </div>
+    <div class=card>
+      <div class=k style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Allowed Telegram IDs</div>
+      <div style="font-size:14px;margin-top:4px;word-break:break-all">
+        {{if .Allowed}}{{range $i, $u := .Allowed}}{{if $i}}, {{end}}<code>{{$u}}</code>{{end}}{{else}}<span class=muted>(none)</span>{{end}}
+      </div>
+    </div>
+  </div>
 
-<h2>workspace files</h2>
-{{if .Files}}
-<table><thead><tr><th>path</th><th style="width:80px;text-align:right">size</th></tr></thead><tbody>
-{{range .Files}}<tr><td><code>{{.Path}}</code></td><td style="text-align:right" class=muted>{{fmtSize .Size}}</td></tr>{{end}}
-</tbody></table>
-{{else}}<div class="card muted">workspace is empty</div>{{end}}
+  <!-- ---- two-column: activity + sidebar ---- -->
+  <div class=cols>
+    <div>
 
-<h2>logs (tail)</h2>
-{{if .Logs}}<pre>{{range .Logs}}{{.}}
-{{end}}</pre>{{else}}<div class="card muted">no logs yet</div>{{end}}
+      <div id=activity class="card section-card" style="margin-top:4px">
+        <div class=hd>
+          <div class=lbl>Recent activity</div>
+          <div class=count>{{len .Events}} events</div>
+        </div>
+        <div class="body tight">
+          {{if .Events}}
+          <table>
+            <thead><tr><th style="width:80px">Time</th><th style="width:60px">Dir</th><th style="width:110px">User</th><th>Message</th></tr></thead>
+            <tbody>
+            {{range .Events}}<tr><td class=muted>{{fmtTime .Time}}</td><td class="dir-{{.Direction}}">{{.Direction}}</td><td><code>{{.UserID}}</code></td><td>{{.Text}}</td></tr>{{end}}
+            </tbody>
+          </table>
+          {{else}}
+          <div style="padding:18px;text-align:center" class=muted>No messages yet — ping <code>@clawdy</code> on Telegram to see events flow here.</div>
+          {{end}}
+        </div>
+      </div>
 
-<div class=foot>
-  <div>refreshes every 10s</div>
-  <div><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></div>
-</div>
+      <div class="card section-card" style="margin-top:16px">
+        <div class=hd>
+          <div class=lbl>Telegram sessions</div>
+          <div class=count>{{len .Sessions}} active</div>
+        </div>
+        <div class="body tight">
+          {{if .Sessions}}
+          <table>
+            <thead><tr><th>User</th><th>Session id</th><th>Workspace</th></tr></thead>
+            <tbody>
+            {{range .Sessions}}<tr><td><code>{{.UserID}}</code></td><td><code>{{if .SessionID}}{{.SessionID}}{{else}}—{{end}}</code></td><td><code>{{.Cwd}}</code></td></tr>{{end}}
+            </tbody>
+          </table>
+          {{else}}
+          <div style="padding:18px;text-align:center" class=muted>No active sessions. A session is created when an allowed user sends their first message.</div>
+          {{end}}
+        </div>
+      </div>
+
+      <div id=logs class="card section-card" style="margin-top:16px">
+        <div class=hd>
+          <div class=lbl>Server logs (tail)</div>
+          <div class=count>{{len .Logs}} lines</div>
+        </div>
+        <div class=body>
+          {{if .Logs}}<pre>{{range .Logs}}{{.}}
+{{end}}</pre>{{else}}<div class=muted>No logs yet.</div>{{end}}
+        </div>
+      </div>
+
+    </div>
+
+    <div>
+      <div id=accounts class="card section-card">
+        <div class=hd>
+          <div class=lbl>Dashboard accounts</div>
+          <div class=count>{{len .Users}} total</div>
+        </div>
+        <div class="body tight">
+          {{if .Users}}
+          <table>
+            <thead><tr><th>Username</th><th>Email</th></tr></thead>
+            <tbody>
+            {{range .Users}}<tr><td><code>{{.Username}}</code></td><td>{{.Email}}</td></tr>{{end}}
+            </tbody>
+          </table>
+          {{else}}<div style="padding:14px" class=muted>No accounts provisioned.</div>{{end}}
+        </div>
+      </div>
+
+      <div class="card section-card" style="margin-top:16px">
+        <div class=hd>
+          <div class=lbl>Workspace files</div>
+          <div class=count>{{len .Files}} items</div>
+        </div>
+        <div class="body tight">
+          {{if .Files}}
+          <table>
+            <thead><tr><th>Path</th><th style="width:72px;text-align:right">Size</th></tr></thead>
+            <tbody>
+            {{range .Files}}<tr><td><code>{{.Path}}</code></td><td style="text-align:right" class=muted>{{fmtSize .Size}}</td></tr>{{end}}
+            </tbody>
+          </table>
+          {{else}}<div style="padding:14px" class=muted>Workspace is empty.</div>{{end}}
+        </div>
+      </div>
+
+      <div class="card section-card" style="margin-top:16px">
+        <div class=hd><div class=lbl>Helpful links</div></div>
+        <div class=body style="font-size:13px;line-height:1.9">
+          {{if .HasGateway}}<div><a href="/gateway-launch">Open gateway console →</a></div>{{end}}
+          <div><a href="/api/status">/api/status (JSON)</a></div>
+          <div><a href="/health">/health</a></div>
+          <div><a href="https://github.com/anchoo2kewl/openclaw">Source on GitHub →</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class=foot>
+    <div>refreshes every 15s · {{.Bot}}</div>
+    <div><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></div>
+  </div>
+</main>
 </body></html>`
 
 const loginHTML = `<!doctype html>
@@ -277,18 +718,24 @@ const loginHTML = `<!doctype html>
 <title>openclaw · sign in</title>
 <style>{{.CSS}}</style>
 </head><body>
-<form class=login method=POST action="/login">
-  <h1>openclaw</h1>
-  {{if .Error}}<div class=err>Invalid credentials</div>{{end}}
-  <label for=identifier>Email or username</label>
-  <input id=identifier name=identifier type=text autocomplete=username autofocus required>
-  <label for=password>Password</label>
-  <input id=password name=password type=password autocomplete=current-password required>
-  <button class="btn btn-primary" type=submit>Sign in</button>
-</form>
-<div class=foot style="max-width:340px;margin:12px auto 0">
-  <div><a href="/">&larr; back</a></div>
-  <div><a href="https://github.com/anchoo2kewl/openclaw">github</a></div>
+<div class=login-wrap>
+  <form class=login method=POST action="/login">
+    <div class=brand style="gap:12px">
+      <div class=brand-mark>◆</div>
+      <div style="font-size:20px">openclaw</div>
+    </div>
+    <div class=sublabel>Sign in to your operator console</div>
+    <label for=identifier>Email or username</label>
+    <input id=identifier name=identifier type=text autocomplete=username autofocus required placeholder="admin">
+    <label for=password>Password</label>
+    <input id=password name=password type=password autocomplete=current-password required placeholder="••••••••">
+    <button class="btn btn-primary" type=submit>Sign in →</button>
+    {{if .Error}}<div class=err>Invalid credentials</div>{{end}}
+    <div class=foot style="margin-top:26px;padding-top:16px">
+      <a href="/">← Back to home</a>
+      <a href="https://github.com/anchoo2kewl/openclaw">GitHub</a>
+    </div>
+  </form>
 </div>
 </body></html>`
 

@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -50,7 +53,11 @@ func newGatewayProxy(target, token string, sessions *sessionStore) http.Handler 
 		}
 		// Don't leak our own cookie jar upstream.
 		req.Header.Del("Cookie")
+		// Tell upstream we can't handle gzip so we can easily rewrite
+		// text/html responses on the way back.
+		req.Header.Set("Accept-Encoding", "identity")
 	}
+	proxy.ModifyResponse = injectBackBar
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Warn().Err(err).Str("path", r.URL.Path).Msg("gateway proxy error")
 		http.Error(w, "gateway unavailable: "+err.Error(), http.StatusBadGateway)
@@ -63,4 +70,104 @@ func newGatewayProxy(target, token string, sessions *sessionStore) http.Handler 
 		}
 		proxy.ServeHTTP(w, r)
 	})
+}
+
+// backBarHTML is injected into every text/html response flowing through
+// the gateway reverse proxy so logged-in operators always have a visible
+// way back to the openclaw dashboard from inside the upstream Control UI.
+// The overlay is fixed-position + high z-index so it sits above the
+// gateway app regardless of the internal DOM layout.
+const backBarHTML = `<style>
+#openclaw-backbar{position:fixed;top:0;left:0;right:0;z-index:2147483647;background:rgba(11,13,16,.92);backdrop-filter:saturate(140%) blur(8px);-webkit-backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #1f2632;color:#e6e9ef;font:500 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:10px 16px;display:flex;align-items:center;gap:14px}
+#openclaw-backbar a{color:#e6e9ef;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;border:1px solid #2a3444;background:#141820}
+#openclaw-backbar a:hover{background:#1f2632}
+#openclaw-backbar .tag{color:#8b94a8;font-weight:400}
+#openclaw-backbar .spacer{flex:1}
+body{padding-top:44px !important}
+</style>
+<div id="openclaw-backbar">
+  <a href="/" title="Back to openclaw dashboard">← Dashboard</a>
+  <span class=tag>openclaw gateway</span>
+  <div class=spacer></div>
+  <a href="/logout-nav" onclick="event.preventDefault();fetch('/logout',{method:'POST',credentials:'same-origin'}).then(()=>location.href='/')">Log out</a>
+</div>
+`
+
+// injectBackBar is a httputil.ReverseProxy.ModifyResponse hook. If the
+// response is HTML, rewrite the body to include backBarHTML right after
+// <body ...>. Anything else (JS, CSS, JSON, images) passes through
+// untouched.
+func injectBackBar(resp *http.Response) error {
+	ct := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/html") {
+		return nil
+	}
+	// Upstream may still emit a compressed body even though we asked for
+	// identity — decode if necessary.
+	var bodyReader io.ReadCloser = resp.Body
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		gr, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return err
+		}
+		bodyReader = gr
+	}
+	body, err := io.ReadAll(bodyReader)
+	_ = bodyReader.Close()
+	if err != nil {
+		return err
+	}
+	idx := bytes.Index(body, []byte("<body"))
+	if idx == -1 {
+		// Not a full HTML document (probably a fragment) — leave alone.
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		resp.Header.Del("Content-Encoding")
+		resp.ContentLength = int64(len(body))
+		resp.Header.Set("Content-Length", itoa(len(body)))
+		return nil
+	}
+	// Find the closing '>' of the <body ...> tag.
+	close := bytes.IndexByte(body[idx:], '>')
+	if close == -1 {
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		return nil
+	}
+	insertAt := idx + close + 1
+
+	var out bytes.Buffer
+	out.Grow(len(body) + len(backBarHTML))
+	out.Write(body[:insertAt])
+	out.WriteString(backBarHTML)
+	out.Write(body[insertAt:])
+
+	resp.Body = io.NopCloser(&out)
+	resp.Header.Del("Content-Encoding")
+	resp.ContentLength = int64(out.Len())
+	resp.Header.Set("Content-Length", itoa(out.Len()))
+	return nil
+}
+
+func itoa(n int) string {
+	// Tiny wrapper so we don't have to import strconv just for this
+	// one-call site in this file (strconv is already imported by main).
+	const digits = "0123456789"
+	if n == 0 {
+		return "0"
+	}
+	neg := n < 0
+	if neg {
+		n = -n
+	}
+	var buf [20]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = digits[n%10]
+		n /= 10
+	}
+	if neg {
+		i--
+		buf[i] = '-'
+	}
+	return string(buf[i:])
 }
