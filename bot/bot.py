@@ -105,10 +105,11 @@ async def deny(update: Update) -> None:
     who = update.effective_user.id if update.effective_user else "?"
     log.warning("denying unauthorized user %s", who)
     if update.message is not None:
+        # Plain text on purpose — the allowlist var name has underscores
+        # that break Telegram's legacy Markdown parser.
         await update.message.reply_text(
-            f"Unauthorized. Your Telegram user id is `{who}`.\n"
-            "Ask the operator to add it to TELEGRAM_ALLOWED_USER_IDS.",
-            parse_mode=ParseMode.MARKDOWN,
+            f"Unauthorized. Your Telegram user id is {who}.\n"
+            "Ask the operator to add it to the allowlist."
         )
 
 
@@ -198,19 +199,19 @@ def _parse_claude_json(stdout: str) -> tuple[str, Optional[str]]:
 # Handlers
 
 HELP_TEXT = (
-    "*openclaw*\n"
+    "openclaw\n"
     "Send any message and I'll pass it to Claude Code running on the server.\n\n"
     "Commands:\n"
-    "`/new` — start a fresh Claude session (forget history)\n"
-    "`/status` — show current session info\n"
-    "`/help` — show this message"
+    "/new — start a fresh Claude session (forget history)\n"
+    "/status — show current session info\n"
+    "/help — show this message"
 )
 
 
 async def start_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_authorized(update):
         return await deny(update)
-    await update.message.reply_text(HELP_TEXT, parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(HELP_TEXT)
 
 
 async def new_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -226,10 +227,9 @@ async def status_cmd(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
         return await deny(update)
     sess = get_session(update.effective_user.id)
     await update.message.reply_text(
-        f"session_id: `{sess.session_id or '(none)'}`\n"
-        f"cwd: `{sess.cwd}`\n"
-        f"model: `{CLAUDE_MODEL or '(default)'}`",
-        parse_mode=ParseMode.MARKDOWN,
+        f"session_id: {sess.session_id or '(none)'}\n"
+        f"cwd: {sess.cwd}\n"
+        f"model: {CLAUDE_MODEL or '(default)'}"
     )
 
 
