@@ -49,9 +49,24 @@ cfg.gateway.controlUi.allowedOrigins = Array.from(existing);
 // consumer — two processes racing getUpdates drops messages.
 cfg.channels = cfg.channels || {};
 cfg.channels.telegram = { enabled: false };
+
+// Default agent model: pick a Claude Sonnet via the Anthropic direct
+// provider. The ANTHROPIC_API_KEY env var (set via gateway.env from the
+// bot container'\''s CLAUDE_CODE_OAUTH_TOKEN) supplies the credential.
+// We never persist the key into this JSON file — only the chosen model
+// identifier — so the on-disk config is safe to share in screenshots.
+cfg.agents = cfg.agents || {};
+cfg.agents.defaults = cfg.agents.defaults || {};
+cfg.agents.defaults.model = cfg.agents.defaults.model || {};
+if (!cfg.agents.defaults.model.primary) {
+  cfg.agents.defaults.model.primary = "anthropic/claude-sonnet-4-5";
+}
+
 fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + "\n", { mode: 0o600 });
 console.log("gateway: config merged into " + path);
 console.log("gateway: allowed origins: " + cfg.gateway.controlUi.allowedOrigins.join(", "));
+console.log("gateway: default model: " + cfg.agents.defaults.model.primary);
+console.log("gateway: anthropic credential: " + (process.env.ANTHROPIC_API_KEY ? "present" : "missing"));
 ' "${CONFIG_FILE}"
 
 # Background auto-approver: the openclaw Control UI requires a paired

@@ -76,18 +76,25 @@ func newGatewayProxy(target, token string, sessions *sessionStore) http.Handler 
 // the gateway reverse proxy so logged-in operators always have a visible
 // way back to the openclaw dashboard from inside the upstream Control UI.
 // The overlay is fixed-position + high z-index so it sits above the
-// gateway app regardless of the internal DOM layout.
+// gateway app regardless of the internal DOM layout. The brand mark is
+// the same SVG used by /favicon.svg and the on-page logo so all surfaces
+// share one glyph.
 const backBarHTML = `<style>
-#openclaw-backbar{position:fixed;top:0;left:0;right:0;z-index:2147483647;background:rgba(11,13,16,.92);backdrop-filter:saturate(140%) blur(8px);-webkit-backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid #1f2632;color:#e6e9ef;font:500 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:10px 16px;display:flex;align-items:center;gap:14px}
-#openclaw-backbar a{color:#e6e9ef;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;border:1px solid #2a3444;background:#141820}
+#openclaw-backbar{position:fixed;top:0;left:0;right:0;z-index:2147483647;background:rgba(11,13,16,.94);backdrop-filter:saturate(140%) blur(10px);-webkit-backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid #1f2632;color:#e6e9ef;font:500 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:9px 16px;display:flex;align-items:center;gap:14px;height:44px;box-sizing:border-box}
+#openclaw-backbar .ocb-brand{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:#e6e9ef}
+#openclaw-backbar .ocb-brand svg{width:22px;height:22px;display:block;filter:drop-shadow(0 4px 14px rgba(99,102,241,0.35))}
+#openclaw-backbar a{color:#e6e9ef;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;border:1px solid #2a3444;background:#141820;transition:background .12s ease}
 #openclaw-backbar a:hover{background:#1f2632}
-#openclaw-backbar .tag{color:#8b94a8;font-weight:400}
+#openclaw-backbar .tag{color:#8b94a8;font-weight:400;padding-left:2px}
 #openclaw-backbar .spacer{flex:1}
 body{padding-top:44px !important}
 </style>
 <div id="openclaw-backbar">
   <a href="/" title="Back to openclaw dashboard">← Dashboard</a>
-  <span class=tag>openclaw gateway</span>
+  <div class="ocb-brand">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="gocb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="14" fill="url(#gocb)"/><path d="M20 22 L32 14 L44 22 L44 42 L32 50 L20 42 Z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/><circle cx="32" cy="32" r="4.5" fill="#fff"/></svg>
+    <span>openclaw</span><span class=tag>· gateway</span>
+  </div>
   <div class=spacer></div>
   <a href="/logout-nav" onclick="event.preventDefault();fetch('/logout',{method:'POST',credentials:'same-origin'}).then(()=>location.href='/')">Log out</a>
 </div>

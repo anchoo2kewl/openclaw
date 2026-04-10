@@ -35,7 +35,8 @@ type dashView struct {
 	Files      []fileEntry
 	Logs       []string
 	CSS        template.CSS
-	Error      string // for login page only
+	Mark       template.HTML // inline SVG of the brand mark, same glyph as the favicon
+	Error      string        // for login page only
 }
 
 // ---------- Helpers --------------------------------------------------------
@@ -140,12 +141,14 @@ h2 { margin: 28px 0 10px; font-size: 12px; text-transform: uppercase; letter-spa
 .nav-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 12px 24px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; }
 .brand-mark {
-  width: 26px; height: 26px; border-radius: 7px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  width: 28px; height: 28px;
   display: inline-flex; align-items: center; justify-content: center;
-  color: white; font-size: 14px; font-weight: 700;
-  box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 14px rgba(99,102,241,0.35));
 }
+.brand-mark svg { width: 100%; height: 100%; display: block; }
+.brand-mark.lg { width: 44px; height: 44px; }
+.brand-mark.xl { width: 72px; height: 72px; }
 .nav a.tab {
   color: var(--fg-dim); font-size: 13px; font-weight: 500;
   padding: 7px 12px; border-radius: 8px; text-decoration: none;
@@ -389,13 +392,16 @@ const publicHTML = `<!doctype html>
 <meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
 <title>openclaw — self-hosted coding agent control plane</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<meta name="theme-color" content="#0a0c10">
 <style>{{.CSS}}</style>
 </head><body>
 
 <div class=landing>
   <div class=landing-nav>
     <div class=brand>
-      <div class=brand-mark>◆</div>
+      <div class=brand-mark>{{.Mark}}</div>
       <div>openclaw</div>
     </div>
     <div class=spacer></div>
@@ -524,13 +530,16 @@ const dashboardHTML = `<!doctype html>
 <meta name=viewport content='width=device-width,initial-scale=1'>
 <meta http-equiv=refresh content=15>
 <title>openclaw · console</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<meta name="theme-color" content="#0a0c10">
 <style>{{.CSS}}</style>
 </head><body>
 
 <nav class=nav>
   <div class=nav-inner>
     <div class=brand>
-      <div class=brand-mark>◆</div>
+      <div class=brand-mark>{{.Mark}}</div>
       <div>openclaw</div>
     </div>
     <a class=tab href="/">Overview</a>
@@ -716,13 +725,16 @@ const loginHTML = `<!doctype html>
 <meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
 <title>openclaw · sign in</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<meta name="theme-color" content="#0a0c10">
 <style>{{.CSS}}</style>
 </head><body>
 <div class=login-wrap>
   <form class=login method=POST action="/login">
-    <div class=brand style="gap:12px">
-      <div class=brand-mark>◆</div>
-      <div style="font-size:20px">openclaw</div>
+    <div class=brand style="gap:12px;margin-bottom:8px">
+      <div class="brand-mark lg">{{.Mark}}</div>
+      <div style="font-size:22px">openclaw</div>
     </div>
     <div class=sublabel>Sign in to your operator console</div>
     <label for=identifier>Email or username</label>
@@ -782,6 +794,9 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok\n"))
 	})
+	mux.HandleFunc("/favicon.svg", serveFaviconSVG)
+	mux.HandleFunc("/favicon.ico", serveFaviconSVG) // browsers fall back here; we serve SVG with the right content-type
+	mux.HandleFunc("/apple-touch-icon.png", serveFaviconSVG)
 	mux.HandleFunc("/login", d.handleLogin)
 	mux.HandleFunc("/logout", d.handleLogout)
 	mux.HandleFunc("/api/status", d.handleAPIStatus)
@@ -832,7 +847,10 @@ func (d *dashboardServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 func (d *dashboardServer) renderPublicLanding(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_ = publicTmpl.Execute(w, dashView{CSS: template.CSS(dashboardCSS)})
+	_ = publicTmpl.Execute(w, dashView{
+		CSS:  template.CSS(dashboardCSS),
+		Mark: brandMarkHTML,
+	})
 }
 
 func (d *dashboardServer) renderAuthedDashboard(w http.ResponseWriter, email string) {
@@ -855,6 +873,7 @@ func (d *dashboardServer) renderAuthedDashboard(w http.ResponseWriter, email str
 		Files:      listWorkspace(s.Workspace),
 		Logs:       s.Logs(),
 		CSS:        template.CSS(dashboardCSS),
+		Mark:       brandMarkHTML,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -865,6 +884,32 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
+}
+
+// faviconSVG is the brand mark — a rounded square with a hex/claw outline
+// and a centred dot, rendered with an indigo→violet gradient. Same exact
+// SVG used for /favicon.svg, the on-page brand-mark element across every
+// template, AND the back-bar overlay injected into the gateway HTML, so
+// the brand stays consistent on every surface.
+const faviconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#g)"/>
+  <path d="M20 22 L32 14 L44 22 L44 42 L32 50 L20 42 Z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="4.5" fill="#fff"/>
+</svg>`
+
+// brandMarkHTML is the same SVG, marked safe for use inside templates.
+var brandMarkHTML = template.HTML(faviconSVG)
+
+func serveFaviconSVG(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	_, _ = w.Write([]byte(faviconSVG))
 }
 
 func (d *dashboardServer) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -961,6 +1006,7 @@ func (d *dashboardServer) renderLogin(w http.ResponseWriter, errMsg string) {
 	setSecurityHeaders(w)
 	_ = loginTmpl.Execute(w, dashView{
 		CSS:   template.CSS(dashboardCSS),
+		Mark:  brandMarkHTML,
 		Error: errMsg,
 	})
 }

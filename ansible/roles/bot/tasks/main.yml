@@ -85,6 +85,13 @@
   changed_when: false
   no_log: true
 
+- name: Read CLAUDE_CODE_OAUTH_TOKEN from /opt/openclaw/.env (may be empty)
+  ansible.builtin.shell: |
+    awk -F= '/^CLAUDE_CODE_OAUTH_TOKEN=/{print $2; found=1} END {if(!found) print ""}' {{ claw_install_dir }}/.env
+  register: claude_oauth_value
+  changed_when: false
+  no_log: true
+
 - name: Write gateway-only /opt/openclaw/gateway.env
   ansible.builtin.copy:
     dest: "{{ claw_install_dir }}/gateway.env"
@@ -92,14 +99,26 @@
     owner: "10002"
     group: "10002"
     content: |
-      # Scoped secrets for the openclaw gateway container. Does NOT include
-      # TELEGRAM_BOT_TOKEN or ANTHROPIC_API_KEY — the gateway must never
-      # become a second consumer of the bot's telegram updates.
+      # Scoped secrets for the openclaw gateway container.
+      # - OPENCLAW_GATEWAY_TOKEN: shared secret with the Go bot's reverse
+      #   proxy (Authorization: Bearer …) for WS auth.
+      # - OPENCLAW_PUBLIC_ORIGINS: CORS origin allowlist for the Control UI.
+      # - ANTHROPIC_API_KEY / CLAUDE_CODE_OAUTH_TOKEN: the subscription
+      #   OAuth token from `claude setup-token`, re-used here so the
+      #   Control UI's Chat pane can actually talk to Claude. The gateway
+      #   must NOT contain TELEGRAM_BOT_TOKEN — the Go bot container owns
+      #   the Telegram long-poll.
       OPENCLAW_GATEWAY_TOKEN={{ gateway_token_value.stdout }}
       OPENCLAW_GATEWAY_PORT=18789
-      # Browser Origin headers that the gateway.controlUi.allowedOrigins
-      # list should accept. Comma-separated.
       OPENCLAW_PUBLIC_ORIGINS=https://{{ claw_hostname }},http://{{ claw_hostname }}
+      # Inference auth: same Claude Code subscription OAuth token used by
+      # the Telegram bot. Set as ANTHROPIC_API_KEY because openclaw's
+      # Anthropic provider passes whatever's there as the x-api-key header,
+      # and Anthropic's Messages API accepts the sk-ant-oat01-… token via
+      # that header at the cost of a slower first-token (~25-40s, OAuth
+      # tokens hit a separate rate-limit pool). Subsequent calls are fast.
+      ANTHROPIC_API_KEY={{ claude_oauth_value.stdout }}
+      CLAUDE_CODE_OAUTH_TOKEN={{ claude_oauth_value.stdout }}
   no_log: true
 
 - name: Seed users.json inside data dir if absent

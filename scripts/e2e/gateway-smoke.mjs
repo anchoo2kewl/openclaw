@@ -60,10 +60,54 @@ page.on('response', r => {
 
 let hardFail = null;
 try {
+  // 0. Favicon sanity: /favicon.svg should serve image/svg+xml + 200.
+  log('GET /favicon.svg');
+  const favResp = await page.request.get(DASHBOARD_URL + '/favicon.svg');
+  if (favResp.status() !== 200) {
+    console.error(`FAIL: /favicon.svg returned ${favResp.status()}`);
+    process.exitCode = 1;
+  } else {
+    const ct = favResp.headers()['content-type'] || '';
+    const body = await favResp.text();
+    if (!ct.includes('image/svg')) {
+      console.error('FAIL: /favicon.svg content-type is', ct);
+      process.exitCode = 1;
+    } else if (!body.includes('<svg') || !body.includes('linearGradient')) {
+      console.error('FAIL: /favicon.svg body does not look like the brand SVG');
+      process.exitCode = 1;
+    } else {
+      console.log('OK: /favicon.svg', body.length, 'bytes', ct);
+    }
+  }
+
   // 1. Login
   log('goto', DASHBOARD_URL + '/login');
   await page.goto(DASHBOARD_URL + '/login', { waitUntil: 'domcontentloaded' });
   await shot(page, '01-login');
+
+  // Sanity: every page must have <link rel="icon" type="image/svg+xml">.
+  // Check the login, authed dashboard, and public landing pages.
+  const checkFaviconLink = async (label) => {
+    const href = await page.getAttribute('link[rel="icon"][type="image/svg+xml"]', 'href').catch(() => null);
+    if (!href) {
+      console.error(`FAIL: ${label} is missing <link rel=icon type=image/svg+xml>`);
+      process.exitCode = 1;
+    } else if (!href.includes('favicon.svg')) {
+      console.error(`FAIL: ${label} link rel=icon points to ${href}`);
+      process.exitCode = 1;
+    } else {
+      console.log(`OK: ${label} has favicon link`);
+    }
+    // Brand-mark element should contain inline SVG (not the old ◆ character)
+    const markHTML = await page.locator('.brand-mark').first().innerHTML().catch(() => '');
+    if (markHTML.includes('<svg')) {
+      console.log(`OK: ${label} brand mark renders inline SVG`);
+    } else {
+      console.error(`FAIL: ${label} brand mark is missing inline SVG (got "${markHTML.slice(0,40)}")`);
+      process.exitCode = 1;
+    }
+  };
+  await checkFaviconLink('login page');
 
   await page.fill('input[name=identifier]', USERNAME);
   await page.fill('input[name=password]', PASSWORD);
@@ -73,6 +117,7 @@ try {
   ]);
   log('login ok, landed on', page.url());
   await shot(page, '02-authed-dashboard');
+  await checkFaviconLink('authed dashboard');
 
   // Verify we see "Log out" on the authed page (cheap sanity).
   await page.waitForSelector('form[action="/logout"]', { timeout: 5_000 });
@@ -157,6 +202,40 @@ try {
     console.log('OK: gateway chat is interactive');
   }
 
+  // 3b. Try to actually exercise Claude inference through the Chat pane.
+  //     Type "Reply with the single word PONG." into the message box and
+  //     wait up to 30s for a response bubble. If the gateway can't reach
+  //     Claude (wrong auth, 401, etc.) this is where it'll surface.
+  if (finalState === 'connected' && !hardFail) {
+    try {
+      const input = page.locator('textarea, [role="textbox"]').first();
+      await input.waitFor({ state: 'visible', timeout: 5000 });
+      await input.fill('Reply with just the single word PONG.');
+      await input.press('Enter');
+      log('sent PONG prompt, waiting for reply…');
+      // Watch the chat area for an assistant bubble with "PONG".
+      const ok = await page.waitForFunction(() => {
+        const text = document.body.innerText || '';
+        // Simple heuristic: a PONG token appears somewhere below the
+        // prompt we just sent. We check case-insensitively and allow
+        // trailing punctuation.
+        const matches = text.match(/PONG[.!\s]?/gi) || [];
+        return matches.length >= 2; // once in our prompt, once in reply
+      }, null, { timeout: 30_000 }).then(() => true).catch(() => false);
+      if (ok) {
+        console.log('OK: gateway got a real Claude response (PONG)');
+      } else {
+        console.error('FAIL: gateway Chat pane never echoed PONG — Anthropic credential may not be wired correctly');
+        process.exitCode = 1;
+      }
+      await shot(page, '05b-chat-response');
+    } catch (e) {
+      log('chat probe errored:', e.message);
+      await shot(page, '05b-chat-error');
+      process.exitCode = 1;
+    }
+  }
+
   // 4. Verify the injected "Back to Dashboard" bar exists on the gateway
   //    HTML and clicking it returns us to "/" (the authed console).
   const backLink = page.locator('#openclaw-backbar a[href="/"]');
@@ -182,16 +261,37 @@ try {
     }
   }
 
-  // 5. Sanity-check the public landing page (hit / with no cookie).
+  // 5. Token leak guard — make sure no page we rendered contains a
+  //    Claude Code subscription token (prefix sk-ant-oat01) or a
+  //    classic Anthropic API key (prefix sk-ant-api03).
+  const currentContent = await page.content();
+  if (/sk-ant-oat[0-9]{2}-/i.test(currentContent) || /sk-ant-api[0-9]{2}-/i.test(currentContent)) {
+    console.error('HARD FAIL: Anthropic-shaped token leaked into page HTML');
+    process.exitCode = 1;
+  } else {
+    console.log('OK: no anthropic token in authed dashboard HTML');
+  }
+
+  // 6. Sanity-check the public landing page (hit / with no cookie).
   await context.clearCookies();
   await page.goto(DASHBOARD_URL + '/', { waitUntil: 'domcontentloaded' });
   await shot(page, '07-public-landing');
+  await checkFaviconLink('public landing');
+  // The gateway back-bar SVG should also be there when we re-visit /gateway/
+  // … but we already navigated away. Hit the gateway path one more time.
   const heroCount = await page.locator('.landing-hero h1').count();
   if (heroCount === 0) {
     console.error('FAIL: public landing hero did not render');
     process.exitCode = 1;
   } else {
     console.log('OK: public landing rendered');
+  }
+  const publicContent = await page.content();
+  if (/sk-ant-oat[0-9]{2}-/i.test(publicContent) || /sk-ant-api[0-9]{2}-/i.test(publicContent)) {
+    console.error('HARD FAIL: Anthropic-shaped token leaked into public landing HTML');
+    process.exitCode = 1;
+  } else {
+    console.log('OK: no anthropic token in public landing HTML');
   }
 } catch (err) {
   console.error('UNEXPECTED:', err);
