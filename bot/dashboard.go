@@ -29,7 +29,7 @@ type dashView struct {
 	Authed     bool
 	Email      string // logged-in user, only set on authed view
 	HasGateway bool
-	Users      []string
+	Users      []UserRow
 	Sessions   []Session
 	Events     []Event
 	Files      []fileEntry
@@ -223,8 +223,8 @@ const dashboardHTML = `<!doctype html>
 
 <h2>dashboard accounts</h2>
 {{if .Users}}
-<table><thead><tr><th>email</th></tr></thead><tbody>
-{{range .Users}}<tr><td>{{.}}</td></tr>{{end}}
+<table><thead><tr><th>username</th><th>email</th></tr></thead><tbody>
+{{range .Users}}<tr><td><code>{{.Username}}</code></td><td>{{.Email}}</td></tr>{{end}}
 </tbody></table>
 {{else}}<div class="card muted">no accounts provisioned</div>{{end}}
 
@@ -269,8 +269,8 @@ const loginHTML = `<!doctype html>
 <form class=login method=POST action="/login">
   <h1>openclaw</h1>
   {{if .Error}}<div class=err>Invalid credentials</div>{{end}}
-  <label for=email>Email</label>
-  <input id=email name=email type=email autocomplete=username autofocus required>
+  <label for=identifier>Email or username</label>
+  <input id=identifier name=identifier type=text autocomplete=username autofocus required>
   <label for=password>Password</label>
   <input id=password name=password type=password autocomplete=current-password required>
   <button class="btn btn-primary" type=submit>Sign in</button>
@@ -417,10 +417,13 @@ func (d *dashboardServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 			d.renderLogin(w, "invalid")
 			return
 		}
-		email := r.PostFormValue("email")
+		identifier := r.PostFormValue("identifier")
+		if identifier == "" {
+			identifier = r.PostFormValue("email") // legacy field name
+		}
 		password := r.PostFormValue("password")
 
-		canonical := d.users.Verify(email, password)
+		canonical := d.users.Verify(identifier, password)
 		if canonical == "" {
 			// Small extra delay to blunt brute-force attempts; Verify
 			// already burns PBKDF2 iterations regardless of which path it

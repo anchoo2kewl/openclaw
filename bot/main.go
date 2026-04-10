@@ -96,7 +96,7 @@ func runServer() {
 	// change without manual intervention.
 	if users.Empty() {
 		if bootstrap := strings.TrimSpace(os.Getenv("DASHBOARD_PASSWORD")); bootstrap != "" {
-			if err := users.Add("admin@openclaw.local", bootstrap); err != nil {
+			if err := users.Add("admin@openclaw.local", "admin", bootstrap); err != nil {
 				log.Fatal().Err(err).Msg("bootstrap admin user")
 			}
 			log.Warn().
@@ -201,10 +201,15 @@ func envOr(k, def string) string {
 // ---- user management subcommands -----------------------------------------
 
 func cmdUserAdd(args []string) error {
-	if len(args) != 1 {
-		return errors.New("usage: openclaw useradd EMAIL")
+	// Usage: openclaw useradd EMAIL [USERNAME]
+	if len(args) < 1 || len(args) > 2 {
+		return errors.New("usage: openclaw useradd EMAIL [USERNAME]")
 	}
 	email := args[0]
+	username := ""
+	if len(args) == 2 {
+		username = args[1]
+	}
 	usersFile := envOr("USERS_FILE", defaultUsersFile)
 
 	users, err := NewUserStore(usersFile)
@@ -216,10 +221,14 @@ func cmdUserAdd(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := users.Add(email, pw); err != nil {
+	if err := users.Add(email, username, pw); err != nil {
 		return err
 	}
-	fmt.Printf("ok — %s provisioned (users file: %s)\n", email, usersFile)
+	displayUser := username
+	if displayUser == "" {
+		displayUser = usernameFromEmail(email)
+	}
+	fmt.Printf("ok — %s (username: %s) provisioned (users file: %s)\n", email, displayUser, usersFile)
 	return nil
 }
 
@@ -252,8 +261,8 @@ func cmdUserList(_ []string) error {
 		fmt.Println("(no accounts)")
 		return nil
 	}
-	for _, e := range list {
-		fmt.Println(e)
+	for _, r := range list {
+		fmt.Printf("%-20s %s\n", r.Username, r.Email)
 	}
 	return nil
 }

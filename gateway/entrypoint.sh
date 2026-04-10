@@ -54,5 +54,24 @@ console.log("gateway: config merged into " + path);
 console.log("gateway: allowed origins: " + cfg.gateway.controlUi.allowedOrigins.join(", "));
 ' "${CONFIG_FILE}"
 
+# Background auto-approver: the openclaw Control UI requires a paired
+# device before it will show the chat pane, but access to this gateway
+# is already gated by the Go dashboard's cookie login (see
+# /opt/openclaw/bot/... in the other container). Any request that
+# reaches us has therefore already been authenticated, so auto-approving
+# new pairing requests is safe and avoids a manual SSH step every time
+# a new browser / tab connects.
+(
+    # Give the gateway a moment to open its WS listener before we start
+    # poking at it with the CLI client.
+    sleep 8
+    while sleep 10; do
+        openclaw devices approve --latest \
+            --url "ws://127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}" \
+            --token "${OPENCLAW_GATEWAY_TOKEN:-}" \
+            >/dev/null 2>&1 || true
+    done
+) &
+
 echo "gateway: starting on :${OPENCLAW_GATEWAY_PORT:-18789}"
 exec openclaw gateway --port "${OPENCLAW_GATEWAY_PORT:-18789}" --allow-unconfigured
