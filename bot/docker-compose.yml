@@ -10,10 +10,14 @@ services:
       - /opt/openclaw/.env
     environment:
       CLAW_WORKSPACE: /workspace
+      DASHBOARD_PORT: "8080"
+      BOT_NAME: clawdy
     volumes:
       - /opt/openclaw/workspace:/workspace
       - /opt/openclaw/claude-home:/home/claw/.claude
-    # Outbound only; no ports exposed to host.
+    # Dashboard bound to loopback only — nginx (on host) proxies to it.
+    ports:
+      - "127.0.0.1:8080:8080"
     networks:
       - openclaw
 

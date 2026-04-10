@@ -1,51 +1,44 @@
 # syntax=docker/dockerfile:1.6
 
-# openclaw — Telegram bot + Claude Code CLI in one container.
+# openclaw — Go binary + Claude Code CLI in one container.
 
-FROM node:20-bookworm-slim AS claude
+# ---- Stage 1: build the static Go binary ---------------------------------
+FROM golang:1.26.2-alpine AS build
+
+WORKDIR /src
+COPY go.mod ./
+COPY *.go ./
+
+ENV CGO_ENABLED=0 GOFLAGS="-trimpath"
+RUN go build -ldflags="-s -w" -o /openclaw .
+
+# ---- Stage 2: runtime (Node for claude CLI + our binary) -----------------
+FROM node:20-bookworm-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates git curl ripgrep jq tini \
     && rm -rf /var/lib/apt/lists/* \
     && npm install -g @anthropic-ai/claude-code \
     && claude --version
 
-FROM claude AS final
-
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        python3 python3-pip python3-venv \
-        git curl ripgrep jq ca-certificates tini \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user so Claude Code doesn't insist on --dangerously-skip-permissions
-# bypassing root checks. (Claude CLI refuses to run as root without that flag; we use
-# that flag, but running as non-root still reduces blast radius.)
+# Non-root user so Claude Code's sandbox checks are happier.
 RUN useradd --create-home --shell /bin/bash --uid 10001 claw
 
-WORKDIR /app
-
-COPY requirements.txt ./
-RUN python3 -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
-
-ENV PATH="/opt/venv/bin:${PATH}"
-
-COPY bot.py ./
+COPY --from=build /openclaw /usr/local/bin/openclaw
 
 RUN mkdir -p /workspace /home/claw/.claude \
-    && chown -R claw:claw /app /workspace /home/claw
+    && chown -R claw:claw /workspace /home/claw
 
 USER claw
 ENV HOME=/home/claw
+WORKDIR /workspace
 
 VOLUME ["/workspace", "/home/claw/.claude"]
 
+EXPOSE 8080
+
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["python3", "/app/bot.py"]
+CMD ["/usr/local/bin/openclaw"]
