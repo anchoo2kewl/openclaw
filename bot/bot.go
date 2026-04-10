@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // --- Telegram wire types (minimal) -----------------------------------------
@@ -51,7 +52,14 @@ Commands:
 /status — show current session info
 /help — show this message`
 
-const maxTelegramMessage = 3800
+const (
+	maxTelegramMessage = 3800
+	// handlerSlots caps how many inbound messages we process concurrently.
+	// Per-user claude calls are already serialized by the session mutex, so
+	// this mostly limits goroutine + memory pressure from a flood of
+	// unauthorized messages we're silently dropping.
+	handlerSlots = 16
+)
 
 type Bot struct {
 	token  string
@@ -59,6 +67,7 @@ type Bot struct {
 	state  *State
 	model  string
 	offset int
+	sem    chan struct{}
 }
 
 func NewBot(token string, state *State, model string) *Bot {
@@ -69,6 +78,7 @@ func NewBot(token string, state *State, model string) *Bot {
 		client: &http.Client{Timeout: 65 * time.Second},
 		state:  state,
 		model:  model,
+		sem:    make(chan struct{}, handlerSlots),
 	}
 }
 
@@ -134,7 +144,10 @@ func (b *Bot) getUpdates(ctx context.Context) ([]tgUpdate, error) {
 
 // Run long-polls Telegram until ctx is cancelled.
 func (b *Bot) Run(ctx context.Context) error {
-	log.Printf("bot: long-polling started (allowed=%v model=%q)", b.state.Allowed, b.model)
+	log.Info().
+		Ints64("allowed", b.state.Allowed).
+		Str("model", b.model).
+		Msg("telegram long-poll started")
 	backoff := time.Second
 	for {
 		if ctx.Err() != nil {
@@ -145,7 +158,7 @@ func (b *Bot) Run(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return nil
 			}
-			log.Printf("bot: getUpdates: %v (retrying in %s)", err, backoff)
+			log.Warn().Err(err).Dur("retry_in", backoff).Msg("getUpdates failed")
 			select {
 			case <-time.After(backoff):
 			case <-ctx.Done():
@@ -159,27 +172,37 @@ func (b *Bot) Run(ctx context.Context) error {
 		backoff = time.Second
 		for _, u := range updates {
 			b.offset = u.UpdateID + 1
-			if u.Message != nil {
-				go b.handleMessage(ctx, u.Message)
+			if u.Message == nil {
+				continue
+			}
+			// Cheap pre-filter: if the sender isn't on the allowlist, drop
+			// immediately without spawning anything and without replying.
+			// This is the hot path under a flood — no Claude call, no
+			// Telegram API call, no goroutine, no log entry.
+			if u.Message.From == nil || !b.state.IsAllowed(u.Message.From.ID) {
+				continue
+			}
+			msg := u.Message
+			select {
+			case b.sem <- struct{}{}:
+				go func() {
+					defer func() { <-b.sem }()
+					b.handleMessage(ctx, msg)
+				}()
+			default:
+				log.Warn().Int64("uid", msg.From.ID).Msg("handler queue full, dropping")
 			}
 		}
 	}
 }
 
 func (b *Bot) handleMessage(ctx context.Context, m *tgMessage) {
-	if m.From == nil {
+	// Defence in depth — Run() already dropped non-allowlisted senders, but
+	// re-check here so any future refactor can't accidentally skip it.
+	if m.From == nil || !b.state.IsAllowed(m.From.ID) {
 		return
 	}
 	uid := m.From.ID
-
-	if !b.state.IsAllowed(uid) {
-		log.Printf("deny unauthorized user %d", uid)
-		_ = b.send(ctx, m.Chat.ID, fmt.Sprintf(
-			"Unauthorized. Your Telegram user id is %d. Ask the operator to add it to the allowlist.",
-			uid,
-		))
-		return
-	}
 
 	text := strings.TrimSpace(m.Text)
 	if text == "" {
@@ -229,7 +252,7 @@ func (b *Bot) handleMessage(ctx context.Context, m *tgMessage) {
 
 	reply, err := runClaude(callCtx, sess, b.model, text)
 	if err != nil {
-		log.Printf("claude error: %v", err)
+		log.Error().Err(err).Int64("uid", uid).Msg("claude failed")
 		reply = "❌ " + err.Error()
 		b.state.Record(uid, "error", reply)
 	} else {
@@ -238,7 +261,7 @@ func (b *Bot) handleMessage(ctx context.Context, m *tgMessage) {
 
 	for _, chunk := range chunks(reply, maxTelegramMessage) {
 		if err := b.send(ctx, m.Chat.ID, chunk); err != nil {
-			log.Printf("send: %v", err)
+			log.Warn().Err(err).Int64("uid", uid).Msg("telegram send failed")
 			return
 		}
 	}

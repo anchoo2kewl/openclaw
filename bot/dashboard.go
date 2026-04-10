@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // ---------- Template model -------------------------------------------------
@@ -25,6 +27,8 @@ type dashView struct {
 	Workspace string
 	Uptime    string
 	Authed    bool
+	Email     string // logged-in user, only set on authed view
+	Users     []string
 	Sessions  []Session
 	Events    []Event
 	Files     []fileEntry
@@ -113,8 +117,8 @@ a:hover { text-decoration: underline; }
 form.login { max-width: 340px; margin: 80px auto 0; padding: 28px; background: #141820; border: 1px solid #1f2632; border-radius: 14px; }
 form.login h1 { margin-bottom: 18px; }
 form.login label { display: block; font-size: 12px; color: #8b94a8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
-form.login input[type=password] { width: 100%; padding: 10px 12px; background: #0b0d10; color: #e6e9ef; border: 1px solid #2a3444; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
-form.login input[type=password]:focus { outline: none; border-color: #2563eb; }
+form.login input[type=email], form.login input[type=password] { width: 100%; padding: 10px 12px; background: #0b0d10; color: #e6e9ef; border: 1px solid #2a3444; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
+form.login input[type=email]:focus, form.login input[type=password]:focus { outline: none; border-color: #2563eb; }
 form.login button { width: 100%; padding: 10px; }
 .err { color: #f87171; font-size: 13px; margin: -8px 0 12px; }
 .lede { font-size: 15px; color: #c8d0dd; }
@@ -201,18 +205,26 @@ const dashboardHTML = `<!doctype html>
     <h1>openclaw <span class=muted style="font-size:14px">/ {{.Bot}}</span></h1>
     <div class=sub><span class=dot></span>online · uptime {{.Uptime}} · {{len .Sessions}} active session(s)</div>
   </div>
-  <div>
+  <div style="text-align:right">
+    <div class=muted style="font-size:12px;margin-bottom:6px">{{.Email}}</div>
     <form method=POST action="/logout" style="margin:0"><button class=btn type=submit>Log out</button></form>
   </div>
 </div>
 
 <div class=grid>
   <div class=card><div class=k>model</div><div class=v>{{.Model}}</div></div>
-  <div class=card><div class=k>allowed users</div><div class=v>{{if .Allowed}}{{range $i, $u := .Allowed}}{{if $i}}, {{end}}{{$u}}{{end}}{{else}}(none){{end}}</div></div>
+  <div class=card><div class=k>allowed telegram users</div><div class=v>{{if .Allowed}}{{range $i, $u := .Allowed}}{{if $i}}, {{end}}{{$u}}{{end}}{{else}}(none){{end}}</div></div>
   <div class=card><div class=k>workspace</div><div class=v>{{.Workspace}}</div></div>
 </div>
 
-<h2>sessions</h2>
+<h2>dashboard accounts</h2>
+{{if .Users}}
+<table><thead><tr><th>email</th></tr></thead><tbody>
+{{range .Users}}<tr><td>{{.}}</td></tr>{{end}}
+</tbody></table>
+{{else}}<div class="card muted">no accounts provisioned</div>{{end}}
+
+<h2>telegram sessions</h2>
 {{if .Sessions}}
 <table><thead><tr><th>user</th><th>session_id</th><th>cwd</th></tr></thead><tbody>
 {{range .Sessions}}<tr><td>{{.UserID}}</td><td><code>{{if .SessionID}}{{.SessionID}}{{else}}—{{end}}</code></td><td><code>{{.Cwd}}</code></td></tr>{{end}}
@@ -253,8 +265,10 @@ const loginHTML = `<!doctype html>
 <form class=login method=POST action="/login">
   <h1>openclaw</h1>
   {{if .Error}}<div class=err>Invalid credentials</div>{{end}}
+  <label for=email>Email</label>
+  <input id=email name=email type=email autocomplete=username autofocus required>
   <label for=password>Password</label>
-  <input id=password name=password type=password autofocus required>
+  <input id=password name=password type=password autocomplete=current-password required>
   <button class="btn btn-primary" type=submit>Sign in</button>
 </form>
 <div class=foot style="max-width:340px;margin:12px auto 0">
@@ -277,16 +291,16 @@ var (
 
 type dashboardServer struct {
 	state    *State
-	password string
+	users    *UserStore
 	sessions *sessionStore
 }
 
 // NewDashboard builds the full HTTP handler tree. Public endpoints: /,
 // /login, /logout, /health. /api/status requires auth.
-func NewDashboard(s *State, password string) http.Handler {
+func NewDashboard(s *State, users *UserStore) http.Handler {
 	d := &dashboardServer{
 		state:    s,
-		password: password,
+		users:    users,
 		sessions: newSessionStore(12 * time.Hour),
 	}
 
@@ -307,8 +321,8 @@ func (d *dashboardServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setSecurityHeaders(w)
-	if d.sessions.authed(r) {
-		d.renderAuthedDashboard(w)
+	if email := d.sessions.authedEmail(r); email != "" {
+		d.renderAuthedDashboard(w, email)
 		return
 	}
 	d.renderPublicLanding(w)
@@ -319,7 +333,7 @@ func (d *dashboardServer) renderPublicLanding(w http.ResponseWriter) {
 	_ = publicTmpl.Execute(w, dashView{CSS: template.CSS(dashboardCSS)})
 }
 
-func (d *dashboardServer) renderAuthedDashboard(w http.ResponseWriter) {
+func (d *dashboardServer) renderAuthedDashboard(w http.ResponseWriter, email string) {
 	s := d.state
 	sess := s.SessionsSnapshot()
 	sort.Slice(sess, func(i, j int) bool { return sess[i].UserID < sess[j].UserID })
@@ -331,6 +345,8 @@ func (d *dashboardServer) renderAuthedDashboard(w http.ResponseWriter) {
 		Workspace: s.Workspace,
 		Uptime:    fmtUptime(time.Since(s.StartTime)),
 		Authed:    true,
+		Email:     email,
+		Users:     d.users.List(),
 		Sessions:  sess,
 		Events:    s.Events(),
 		Files:     listWorkspace(s.Workspace),
@@ -349,8 +365,7 @@ func setSecurityHeaders(w http.ResponseWriter) {
 }
 
 func (d *dashboardServer) handleLogin(w http.ResponseWriter, r *http.Request) {
-	// Already signed in? Skip the form.
-	if d.sessions.authed(r) {
+	if email := d.sessions.authedEmail(r); email != "" {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -360,17 +375,23 @@ func (d *dashboardServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		d.renderLogin(w, "")
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
-			d.renderLogin(w, "Invalid form")
+			d.renderLogin(w, "invalid")
 			return
 		}
-		pw := r.PostFormValue("password")
-		if !checkPassword(d.password, pw) {
-			// Small delay to blunt brute-force attempts.
-			time.Sleep(500 * time.Millisecond)
-			d.renderLogin(w, "Wrong password")
+		email := r.PostFormValue("email")
+		password := r.PostFormValue("password")
+
+		canonical := d.users.Verify(email, password)
+		if canonical == "" {
+			// Small extra delay to blunt brute-force attempts; Verify
+			// already burns PBKDF2 iterations regardless of which path it
+			// took, so we don't leak "email exists" via timing here.
+			time.Sleep(250 * time.Millisecond)
+			log.Warn().Str("ip", clientIP(r)).Msg("login failed")
+			d.renderLogin(w, "invalid")
 			return
 		}
-		token := d.sessions.issue()
+		token := d.sessions.issue(canonical)
 		if token == "" {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
@@ -384,6 +405,7 @@ func (d *dashboardServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 			SameSite: http.SameSiteLaxMode,
 			MaxAge:   int((12 * time.Hour).Seconds()),
 		})
+		log.Info().Str("email", canonical).Str("ip", clientIP(r)).Msg("login ok")
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	default:
 		w.Header().Set("Allow", "GET, POST")
@@ -413,7 +435,7 @@ func (d *dashboardServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *dashboardServer) handleAPIStatus(w http.ResponseWriter, r *http.Request) {
-	if !d.sessions.authed(r) {
+	if d.sessions.authedEmail(r) == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
@@ -442,4 +464,22 @@ func orDefault(s, def string) string {
 		return def
 	}
 	return s
+}
+
+// clientIP returns the best-effort client IP, preferring nginx's
+// X-Forwarded-For (which is already filtered to trusted CF ranges) before
+// falling back to the raw RemoteAddr.
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		for i := 0; i < len(xff); i++ {
+			if xff[i] == ',' {
+				return xff[:i]
+			}
+		}
+		return xff
+	}
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
+	}
+	return r.RemoteAddr
 }

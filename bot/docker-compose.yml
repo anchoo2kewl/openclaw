@@ -12,9 +12,11 @@ services:
       CLAW_WORKSPACE: /workspace
       DASHBOARD_PORT: "8080"
       BOT_NAME: clawdy
+      USERS_FILE: /var/lib/openclaw/users.json
     volumes:
       - /opt/openclaw/workspace:/workspace
       - /opt/openclaw/claude-home:/home/claw/.claude
+      - /opt/openclaw/data:/var/lib/openclaw
     # Dashboard bound to loopback only — nginx (on host) proxies to it.
     ports:
       - "127.0.0.1:8080:8080"

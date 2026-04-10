@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
 	"sync"
@@ -11,53 +10,59 @@ import (
 
 const sessionCookieName = "openclaw_session"
 
-// sessionStore is an in-memory, single-process session table. openclaw is a
-// single-user tool, so we don't bother persisting sessions across restarts —
-// you just log in again. Sessions expire after ttl of inactivity.
+// sessionEntry is the payload we remember for each issued cookie token.
+type sessionEntry struct {
+	email  string
+	expiry time.Time
+}
+
+// sessionStore is an in-memory, single-process session table. Sessions
+// don't survive a restart — users just log in again. ttl is a sliding
+// window extended on every successful lookup.
 type sessionStore struct {
 	mu       sync.Mutex
-	sessions map[string]time.Time
+	sessions map[string]sessionEntry
 	ttl      time.Duration
 }
 
 func newSessionStore(ttl time.Duration) *sessionStore {
 	return &sessionStore{
-		sessions: make(map[string]time.Time),
+		sessions: make(map[string]sessionEntry),
 		ttl:      ttl,
 	}
 }
 
-func (s *sessionStore) issue() string {
+func (s *sessionStore) issue(email string) string {
 	var b [32]byte
 	if _, err := rand.Read(b[:]); err != nil {
-		// rand.Read failing is catastrophic; log and return an unusable token
-		// rather than panic inside a request handler.
 		return ""
 	}
 	token := hex.EncodeToString(b[:])
 	s.mu.Lock()
-	s.sessions[token] = time.Now().Add(s.ttl)
+	s.sessions[token] = sessionEntry{email: email, expiry: time.Now().Add(s.ttl)}
 	s.mu.Unlock()
 	return token
 }
 
-// valid checks the token and extends its expiry on success (sliding window).
-func (s *sessionStore) valid(token string) bool {
+// lookup returns the email associated with token, or "" if the session is
+// missing or expired. On success the expiry is extended (sliding window).
+func (s *sessionStore) lookup(token string) string {
 	if token == "" {
-		return false
+		return ""
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	exp, ok := s.sessions[token]
+	e, ok := s.sessions[token]
 	if !ok {
-		return false
+		return ""
 	}
-	if time.Now().After(exp) {
+	if time.Now().After(e.expiry) {
 		delete(s.sessions, token)
-		return false
+		return ""
 	}
-	s.sessions[token] = time.Now().Add(s.ttl)
-	return true
+	e.expiry = time.Now().Add(s.ttl)
+	s.sessions[token] = e
+	return e.email
 }
 
 func (s *sessionStore) revoke(token string) {
@@ -69,20 +74,12 @@ func (s *sessionStore) revoke(token string) {
 	s.mu.Unlock()
 }
 
-// authed returns true if the request carries a valid session cookie.
-func (s *sessionStore) authed(r *http.Request) bool {
+// authedEmail returns the logged-in email for the request, or "" if the
+// caller has no valid session cookie.
+func (s *sessionStore) authedEmail(r *http.Request) string {
 	c, err := r.Cookie(sessionCookieName)
 	if err != nil {
-		return false
+		return ""
 	}
-	return s.valid(c.Value)
-}
-
-// checkPassword is a constant-time comparison so probing the login form
-// doesn't leak the password length via timing.
-func checkPassword(expected, got string) bool {
-	if expected == "" {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(expected), []byte(got)) == 1
+	return s.lookup(c.Value)
 }

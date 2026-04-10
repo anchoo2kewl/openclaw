@@ -38,6 +38,28 @@
       ANTHROPIC_API_KEY=
       CLAUDE_MODEL=claude-sonnet-4-5
 
+- name: Ensure data directory exists (bind-mounted into container)
+  ansible.builtin.file:
+    path: "{{ claw_install_dir }}/data"
+    state: directory
+    owner: "10001"
+    group: "10001"
+    mode: "0750"
+
+- name: Seed users.json inside data dir if absent
+  ansible.builtin.copy:
+    dest: "{{ claw_install_dir }}/data/users.json"
+    content: "[]\n"
+    mode: "0600"
+    owner: "10001"
+    group: "10001"
+    force: false
+
+- name: Clean up legacy /opt/openclaw/users.json (replaced by data/users.json)
+  ansible.builtin.file:
+    path: "{{ claw_install_dir }}/users.json"
+    state: absent
+
 - name: Check if .env has a telegram token
   ansible.builtin.shell: |
     set -e

@@ -6,7 +6,11 @@
 FROM golang:1.26.2-alpine AS build
 
 WORKDIR /src
-COPY go.mod ./
+
+# Cache-friendly: fetch modules first, then copy sources.
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY *.go ./
 
 ENV CGO_ENABLED=0 GOFLAGS="-trimpath"
