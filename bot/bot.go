@@ -25,10 +25,13 @@ type tgChat struct {
 }
 
 type tgMessage struct {
-	MessageID int     `json:"message_id"`
-	From      *tgUser `json:"from"`
-	Chat      tgChat  `json:"chat"`
-	Text      string  `json:"text"`
+	MessageID int          `json:"message_id"`
+	From      *tgUser      `json:"from"`
+	Chat      tgChat       `json:"chat"`
+	Text      string       `json:"text"`
+	Document  *tgDocument  `json:"document"`
+	Photo     []tgPhoto    `json:"photo"`
+	Caption   string       `json:"caption"`
 }
 
 type tgUpdate struct {
@@ -56,6 +59,9 @@ Commands:
 /git log — show recent commits
 /git branch <name> — create and switch to a new branch
 /pr [title] — commit all changes, push, and create a GitHub PR
+/files — list files in workspace
+/download <path> — send a file from workspace
+Send any file/photo to save it to the workspace
 /help — show this message`
 
 const (
@@ -210,11 +216,57 @@ func (b *Bot) handleMessage(ctx context.Context, m *tgMessage) {
 	}
 	uid := m.From.ID
 
+	// Handle incoming file uploads (documents and photos).
+	if m.Document != nil {
+		sess := b.state.Session(uid)
+		fileName := m.Document.FileName
+		if fileName == "" {
+			fileName = "document"
+		}
+		b.state.Record(uid, "in", fmt.Sprintf("[file: %s]", fileName))
+		b.typing(ctx, m.Chat.ID)
+		result, err := b.downloadFile(ctx, m.Document.FileID, fileName, sess.Cwd)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, "📥 "+result)
+			if m.Caption != "" {
+				// If there's a caption, treat it as a message to Claude about the file.
+				text := strings.TrimSpace(m.Caption)
+				b.handleTextMessage(ctx, m, uid, text)
+			}
+		}
+		return
+	}
+	if len(m.Photo) > 0 {
+		// Pick the largest photo (last in the array).
+		photo := m.Photo[len(m.Photo)-1]
+		sess := b.state.Session(uid)
+		fileName := fmt.Sprintf("photo_%d.jpg", time.Now().Unix())
+		b.state.Record(uid, "in", fmt.Sprintf("[photo: %s]", fileName))
+		b.typing(ctx, m.Chat.ID)
+		result, err := b.downloadFile(ctx, photo.FileID, fileName, sess.Cwd)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, "📥 "+result)
+			if m.Caption != "" {
+				text := strings.TrimSpace(m.Caption)
+				b.handleTextMessage(ctx, m, uid, text)
+			}
+		}
+		return
+	}
+
 	text := strings.TrimSpace(m.Text)
 	if text == "" {
 		return
 	}
 
+	b.handleTextMessage(ctx, m, uid, text)
+}
+
+func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, text string) {
 	switch {
 	case text == "/start" || text == "/help":
 		_ = b.send(ctx, m.Chat.ID, helpText)
@@ -322,6 +374,27 @@ func (b *Bot) handleMessage(ctx context.Context, m *tgMessage) {
 		} else {
 			b.state.Record(uid, "out", result)
 			_ = b.send(ctx, m.Chat.ID, "✅ "+result)
+		}
+		return
+	case text == "/files":
+		sess := b.state.Session(uid)
+		result, err := listFiles(sess.Cwd)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, result)
+		}
+		return
+	case strings.HasPrefix(text, "/download "):
+		path := strings.TrimSpace(strings.TrimPrefix(text, "/download "))
+		if path == "" {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /download <path>")
+			return
+		}
+		sess := b.state.Session(uid)
+		b.typing(ctx, m.Chat.ID)
+		if err := b.sendFile(ctx, m.Chat.ID, sess.Cwd, path); err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
 		}
 		return
 	}
