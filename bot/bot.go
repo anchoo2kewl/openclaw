@@ -68,6 +68,9 @@ Commands:
 /project <name> — create/switch to a named project
 /projects — list all projects
 /project delete <name> — delete a project
+/tools — list available tool integrations
+/tool enable <name> — enable a tool (github, fetch, filesystem)
+/tool disable <name> — disable a tool
 Send any file/photo to save it to the workspace
 /help — show this message
 
@@ -93,6 +96,7 @@ type Bot struct {
 	sem       chan struct{}
 	scheduler *Scheduler
 	projects  *ProjectStore
+	tools     *ToolManager
 }
 
 func NewBot(token string, state *State, model string) *Bot {
@@ -527,6 +531,37 @@ func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, te
 		sess.SessionID = "" // new project = new Claude session
 		sess.mu.Unlock()
 		_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Switched to project '%s'\nWorkspace: %s\nClaude session reset.", name, projectDir))
+		return
+	case text == "/tools":
+		if b.tools == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Tool manager not available")
+			return
+		}
+		_ = b.send(ctx, m.Chat.ID, b.tools.FormatToolList())
+		return
+	case strings.HasPrefix(text, "/tool enable "):
+		name := strings.TrimSpace(strings.TrimPrefix(text, "/tool enable "))
+		if b.tools == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Tool manager not available")
+			return
+		}
+		if err := b.tools.EnableTool(name); err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Tool '%s' enabled. It will be available in your next Claude session.\nUse /new to start a fresh session with the new tool.", name))
+		}
+		return
+	case strings.HasPrefix(text, "/tool disable "):
+		name := strings.TrimSpace(strings.TrimPrefix(text, "/tool disable "))
+		if b.tools == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Tool manager not available")
+			return
+		}
+		if err := b.tools.DisableTool(name); err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Tool '%s' disabled.", name))
+		}
 		return
 	}
 
