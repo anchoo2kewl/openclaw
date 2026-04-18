@@ -61,8 +61,15 @@ Commands:
 /pr [title] — commit all changes, push, and create a GitHub PR
 /files — list files in workspace
 /download <path> — send a file from workspace
+/schedule <cron> <prompt> — schedule a recurring task
+/jobs — list scheduled jobs
+/cancel <id> — cancel a scheduled job
 Send any file/photo to save it to the workspace
-/help — show this message`
+/help — show this message
+
+Schedule formats: HH:MM (daily UTC) or */N (every N minutes)
+Examples: /schedule 09:00 run tests and report
+          /schedule */30 check git status`
 
 const (
 	maxTelegramMessage = 3800
@@ -74,12 +81,13 @@ const (
 )
 
 type Bot struct {
-	token  string
-	client *http.Client
-	state  *State
-	model  string
-	offset int
-	sem    chan struct{}
+	token     string
+	client    *http.Client
+	state     *State
+	model     string
+	offset    int
+	sem       chan struct{}
+	scheduler *Scheduler
 }
 
 func NewBot(token string, state *State, model string) *Bot {
@@ -395,6 +403,57 @@ func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, te
 		b.typing(ctx, m.Chat.ID)
 		if err := b.sendFile(ctx, m.Chat.ID, sess.Cwd, path); err != nil {
 			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		}
+		return
+	case strings.HasPrefix(text, "/schedule "):
+		rest := strings.TrimSpace(strings.TrimPrefix(text, "/schedule "))
+		parts := strings.SplitN(rest, " ", 2)
+		if len(parts) < 2 {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /schedule <HH:MM or */N> <prompt>")
+			return
+		}
+		if b.scheduler == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Scheduler not available")
+			return
+		}
+		job, err := b.scheduler.Add(uid, m.Chat.ID, parts[0], parts[1])
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Job #%d scheduled (%s): %s", job.ID, job.Cron, job.Prompt))
+		}
+		return
+	case text == "/jobs":
+		if b.scheduler == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Scheduler not available")
+			return
+		}
+		jobs := b.scheduler.List(uid)
+		if len(jobs) == 0 {
+			_ = b.send(ctx, m.Chat.ID, "No scheduled jobs.")
+			return
+		}
+		var sb strings.Builder
+		for _, j := range jobs {
+			fmt.Fprintf(&sb, "#%d [%s] %s\n", j.ID, j.Cron, j.Prompt)
+		}
+		_ = b.send(ctx, m.Chat.ID, sb.String())
+		return
+	case strings.HasPrefix(text, "/cancel "):
+		idStr := strings.TrimSpace(strings.TrimPrefix(text, "/cancel "))
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /cancel <job-id>")
+			return
+		}
+		if b.scheduler == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Scheduler not available")
+			return
+		}
+		if b.scheduler.Cancel(uid, id) {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Job #%d cancelled.", id))
+		} else {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("❌ Job #%d not found.", id))
 		}
 		return
 	}

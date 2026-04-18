@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -161,6 +162,17 @@ func runServer() {
 	}()
 
 	bot := NewBot(token, state, model)
+
+	jobsFile := filepath.Join(workspace, ".claw-jobs.json")
+	scheduler := NewScheduler(jobsFile, bot)
+	bot.scheduler = scheduler
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scheduler.Run(ctx)
+	}()
+
 	go func() {
 		defer wg.Done()
 		if err := bot.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
