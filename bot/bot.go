@@ -75,6 +75,11 @@ Commands:
 /search <query> — search through past conversations
 /orchestrate <strategy> <task> — run multi-agent workflow
 /strategies — list available orchestration strategies
+/plugin catalog — browse available plugins
+/plugin install <name> — install a plugin
+/plugin list — show installed plugins
+/plugin remove <name> — uninstall a plugin
+/plugin custom <name> <cmd> [args] — install custom MCP server
 Send any file/photo to save it to the workspace
 /help — show this message
 
@@ -102,6 +107,7 @@ type Bot struct {
 	projects  *ProjectStore
 	tools     *ToolManager
 	history   *HistoryStore
+	plugins   *PluginStore
 }
 
 func NewBot(token string, state *State, model string) *Bot {
@@ -633,6 +639,60 @@ func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, te
 
 		for _, chunk := range chunks(output, maxTelegramMessage) {
 			_ = b.send(ctx, m.Chat.ID, chunk)
+		}
+		return
+	case text == "/plugin catalog":
+		_ = b.send(ctx, m.Chat.ID, FormatCatalog())
+		return
+	case text == "/plugin list":
+		if b.plugins == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Plugin system not available")
+			return
+		}
+		_ = b.send(ctx, m.Chat.ID, b.plugins.FormatPluginList())
+		return
+	case strings.HasPrefix(text, "/plugin install "):
+		name := strings.TrimSpace(strings.TrimPrefix(text, "/plugin install "))
+		if b.plugins == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Plugin system not available")
+			return
+		}
+		if err := b.plugins.Install(name); err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Plugin '%s' installed.\nUse /new to start a session with the new plugin.", name))
+		}
+		return
+	case strings.HasPrefix(text, "/plugin remove "):
+		name := strings.TrimSpace(strings.TrimPrefix(text, "/plugin remove "))
+		if b.plugins == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Plugin system not available")
+			return
+		}
+		if err := b.plugins.Remove(name); err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Plugin '%s' removed.", name))
+		}
+		return
+	case strings.HasPrefix(text, "/plugin custom "):
+		rest := strings.TrimSpace(strings.TrimPrefix(text, "/plugin custom "))
+		parts := strings.Fields(rest)
+		if len(parts) < 2 {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /plugin custom <name> <command> [args...]")
+			return
+		}
+		if b.plugins == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Plugin system not available")
+			return
+		}
+		name := parts[0]
+		command := parts[1]
+		args := parts[2:]
+		if err := b.plugins.InstallCustom(name, command, args, "Custom plugin: "+name); err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Custom plugin '%s' installed (%s %s).\nUse /new to start a session with it.", name, command, strings.Join(args, " ")))
 		}
 		return
 	}

@@ -145,6 +145,9 @@ func runServer() {
 	bot.tools = NewToolManager(claudeHome)
 	bot.history = NewHistoryStore(workspace)
 
+	pluginDir := filepath.Join(workspace, ".claw-plugins")
+	bot.plugins = NewPluginStore(pluginDir, bot.tools)
+
 	jobsFile := filepath.Join(workspace, ".claw-jobs.json")
 	scheduler := NewScheduler(jobsFile, bot)
 	bot.scheduler = scheduler
