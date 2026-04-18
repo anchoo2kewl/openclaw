@@ -391,11 +391,56 @@ const publicHTML = `<!doctype html>
 <html lang=en><head>
 <meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
-<title>openclaw — self-hosted coding agent control plane</title>
+<title>openclaw — self-hosted AI coding agent platform</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/favicon.svg">
 <meta name="theme-color" content="#0a0c10">
-<style>{{.CSS}}</style>
+<meta name="description" content="Your private Claude Code agent — accessible from Telegram, web, API, and GitHub webhooks. Self-hosted, open source, MIT licensed.">
+<style>{{.CSS}}
+/* ---- landing-specific overrides ---- */
+.showcase { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px; margin: 24px 0; }
+.showcase-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; margin-bottom: 14px; }
+.showcase pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; font-size: 13px; line-height: 1.7; color: var(--fg-dim); margin: 0; }
+.showcase pre .cmd { color: var(--ok); }
+.showcase pre .comment { color: var(--muted-2); }
+.showcase pre .output { color: var(--muted); }
+
+.channels { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 24px; }
+.channel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; text-align: center; transition: border-color 0.15s, transform 0.15s; }
+.channel:hover { border-color: var(--accent); transform: translateY(-3px); }
+.channel .ch-icon { font-size: 32px; margin-bottom: 10px; }
+.channel h3 { font-size: 16px; margin: 0 0 6px; }
+.channel p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5; }
+
+.diagram { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin: 24px 0; overflow-x: auto; }
+.diagram pre { margin: 0; font-size: 12px; line-height: 1.6; color: var(--fg-dim); white-space: pre; }
+.diagram .accent-text { color: var(--accent); }
+.diagram .ok-text { color: var(--ok); }
+.diagram .warn-text { color: var(--warn); }
+
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin: 32px 0; text-align: center; }
+.stat-block .stat-num { font-size: 36px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.stat-block .stat-lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+
+.cmd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 16px; }
+.cmd-item { display: flex; gap: 10px; align-items: baseline; font-size: 13px; padding: 8px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
+.cmd-item code { color: var(--ok); white-space: nowrap; font-size: 12px; }
+.cmd-item span { color: var(--muted); }
+
+.security-layers { counter-reset: layer; }
+.sec-layer { display: flex; gap: 16px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.sec-layer:last-child { border-bottom: none; }
+.sec-layer::before { counter-increment: layer; content: counter(layer); font-size: 18px; font-weight: 800; color: var(--accent); width: 28px; text-align: center; flex-shrink: 0; }
+.sec-layer h4 { margin: 0 0 2px; font-size: 14px; color: var(--fg); }
+.sec-layer p { margin: 0; font-size: 13px; color: var(--muted); }
+
+.divider { height: 1px; background: var(--border); margin: 48px 0; }
+
+@media (max-width: 640px) {
+  .landing-hero h1 { font-size: 28px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
 </head><body>
 
 <div class=landing>
@@ -409,113 +454,387 @@ const publicHTML = `<!doctype html>
     <a class="btn btn-primary" href="/login" style="margin-left:8px">Sign in</a>
   </div>
 
+  <!-- ====== HERO ====== -->
   <section class=landing-hero>
-    <div class=eyebrow>● Self-hosted · open source · MIT</div>
-    <h1>Your private <span>coding agent</span>,<br>reachable from anywhere.</h1>
+    <div class=eyebrow>Self-hosted · open source · MIT · 5,000+ lines of Go</div>
+    <h1>Your private <span>coding agent platform</span>,<br>reachable from anywhere.</h1>
     <p class=tagline>
-      Drive a sandboxed agent from a chat interface on any device.
-      Private by default, hosted on your own box, owned by you.
+      Clone repos, write code, create PRs, run tests on a schedule, orchestrate multi-agent workflows &mdash;
+      all from Telegram, a web chat, REST API, or GitHub webhooks. Self-hosted on your own VM.
     </p>
     <div class=cta>
       <a class="btn btn-primary" href="/login">Sign in to your console</a>
-      <a class="btn btn-ghost" href="https://github.com/anchoo2kewl/openclaw">View on GitHub →</a>
+      <a class="btn btn-ghost" href="/chat">Open web chat</a>
+      <a class="btn btn-ghost" href="https://github.com/anchoo2kewl/openclaw">View on GitHub &rarr;</a>
     </div>
   </section>
 
+  <!-- ====== BY THE NUMBERS ====== -->
+  <div class=stats-row>
+    <div class=stat-block><div class=stat-num>30+</div><div class=stat-lbl>Telegram commands</div></div>
+    <div class=stat-block><div class=stat-num>4</div><div class=stat-lbl>Access channels</div></div>
+    <div class=stat-block><div class=stat-num>3</div><div class=stat-lbl>AI agent strategies</div></div>
+    <div class=stat-block><div class=stat-num>5</div><div class=stat-lbl>Plugin catalog</div></div>
+    <div class=stat-block><div class=stat-num>7</div><div class=stat-lbl>Security layers</div></div>
+  </div>
+
+  <div class=divider></div>
+
+  <!-- ====== 4 CHANNELS ====== -->
   <section class=section>
-    <div class=eyebrow-lbl>FEATURES</div>
-    <h2 class=big>Everything you need, nothing you don't.</h2>
-    <p class=lede>A minimal operator console over a focused set of primitives: chat, sessions, a workspace, and a handful of integrations.</p>
+    <div class=eyebrow-lbl>ACCESS ANYWHERE</div>
+    <h2 class=big>Four ways to talk to your agent.</h2>
+    <p class=lede>Whether you're on your phone, at your desk, or in a CI pipeline &mdash; your coding agent is always one message away.</p>
+
+    <div class=channels>
+      <div class=channel>
+        <div class=ch-icon>&#x1F4F1;</div>
+        <h3>Telegram</h3>
+        <p>30+ commands. Clone repos, manage projects, send files, schedule tasks &mdash; all from your phone.</p>
+      </div>
+      <div class=channel>
+        <div class=ch-icon>&#x1F4BB;</div>
+        <h3>Web Chat</h3>
+        <p>Full browser-based chat UI at <code>/chat</code>. Dark theme, mobile-friendly, typing indicators.</p>
+      </div>
+      <div class=channel>
+        <div class=ch-icon>&#x1F517;</div>
+        <h3>REST API</h3>
+        <p>Trigger async Claude runs from scripts or CI. Submit jobs, poll results, integrate anywhere.</p>
+      </div>
+      <div class=channel>
+        <div class=ch-icon>&#x1F419;</div>
+        <h3>GitHub Webhooks</h3>
+        <p>Auto-review PRs, triage new issues, summarize pushes. Claude reacts to your repo in real time.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class=divider></div>
+
+  <!-- ====== GIT & WORKSPACES ====== -->
+  <section class=section>
+    <div class=eyebrow-lbl>GIT-NATIVE WORKSPACES</div>
+    <h2 class=big>Clone, code, commit, PR &mdash; without leaving chat.</h2>
+    <p class=lede>Full git integration built in. Clone any GitHub repo, let Claude work on it, then ship a PR with one command.</p>
+
+    <div class=showcase>
+      <div class=showcase-title>Workflow example</div>
+      <pre><span class=cmd>/project api-refactor</span>         <span class=comment># create isolated project</span>
+<span class=cmd>/clone myorg/backend</span>           <span class=comment># clone repo into workspace</span>
+<span class=output>Cloned myorg/backend</span>
+
+<span class=output>You: refactor the auth module to use JWT</span>
+<span class=output>Claude: I'll update auth.go to use...</span>
+
+<span class=cmd>/git diff</span>                       <span class=comment># review changes</span>
+<span class=cmd>/pr Refactor auth to JWT</span>        <span class=comment># commit, push, create PR</span>
+<span class=output>https://github.com/myorg/backend/pull/42</span></pre>
+    </div>
 
     <div class=features-grid>
       <div class=feature>
-        <div class=icon>💬</div>
-        <h3>Chat-driven workflows</h3>
-        <p>Send a message, get a result. Long-running agent loops stream progress back to you as they finish.</p>
+        <div class=icon>&#x1F4C2;</div>
+        <h3>Named projects</h3>
+        <p>Isolate work into named projects. Each gets its own directory and Claude session. Switch instantly.</p>
       </div>
       <div class=feature>
-        <div class=icon>🛡</div>
-        <h3>Private allowlist</h3>
-        <p>No signups, no public access. Only explicitly approved accounts can interact with the agent.</p>
+        <div class=icon>&#x1F500;</div>
+        <h3>Full git workflow</h3>
+        <p><code>/clone</code>, <code>/git status</code>, <code>/git diff</code>, <code>/git branch</code>, <code>/git log</code> &mdash; all built in.</p>
       </div>
       <div class=feature>
-        <div class=icon>⏱</div>
-        <h3>Resumable sessions</h3>
-        <p>Each account gets its own persistent conversation and a dedicated workspace on disk.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>⚙</div>
-        <h3>Container sandbox</h3>
-        <p>Commands run inside a disposable container with a scoped workspace volume and no host access.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>📈</div>
-        <h3>Operator console</h3>
-        <p>Live view of sessions, recent activity, workspace files, and server logs — all in one place.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>🔌</div>
-        <h3>Integrated gateway</h3>
-        <p>Embedded upstream coding-agent gateway for a full browser chat UI, proxied through your own auth.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>📦</div>
-        <h3>Single static binary</h3>
-        <p>Pure Go standard library. No framework sprawl, no runtime dependencies — easy to audit and deploy.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>🔐</div>
-        <h3>Cookie session auth</h3>
-        <p>Password-protected management console with PBKDF2-hashed credentials. No third-party IdP required.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>🧭</div>
-        <h3>Ansible-reproducible</h3>
-        <p>Every piece of the stack is templated. Blow away the VM, re-run the playbook, get the same box back.</p>
+        <div class=icon>&#x1F680;</div>
+        <h3>One-command PRs</h3>
+        <p><code>/pr Fix the bug</code> &mdash; stages all changes, pushes a branch, opens a GitHub PR, returns the link.</p>
       </div>
     </div>
   </section>
 
+  <div class=divider></div>
+
+  <!-- ====== FILE TRANSFER ====== -->
   <section class=section>
-    <div class=eyebrow-lbl>HOW IT WORKS</div>
+    <div class=eyebrow-lbl>FILE TRANSFER</div>
+    <h2 class=big>Send files in, get files out.</h2>
+    <p class=lede>Drop a file or photo into the Telegram chat to save it to your workspace. Use <code>/download</code> to retrieve anything Claude created.</p>
+
+    <div class=features-grid>
+      <div class=feature>
+        <div class=icon>&#x1F4E5;</div>
+        <h3>Upload anything</h3>
+        <p>Send documents, photos, configs, data files. They land in your workspace with the original filename.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>&#x1F4E4;</div>
+        <h3>Download results</h3>
+        <p><code>/download report.pdf</code> sends it right back to your Telegram chat. Path traversal protection built in.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>&#x1F4AC;</div>
+        <h3>Caption context</h3>
+        <p>Add a caption when uploading a file &mdash; it's forwarded to Claude as context about what the file is.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class=divider></div>
+
+  <!-- ====== SCHEDULING ====== -->
+  <section class=section>
+    <div class=eyebrow-lbl>SCHEDULED AUTOMATION</div>
+    <h2 class=big>Set it and forget it.</h2>
+    <p class=lede>Schedule recurring Claude tasks that run on a cron. Results are sent straight to your Telegram.</p>
+
+    <div class=showcase>
+      <div class=showcase-title>Cron examples</div>
+      <pre><span class=cmd>/schedule 09:00 pull latest and run test suite, report failures</span>
+<span class=output>Job #1 scheduled (09:00): pull latest and run...</span>
+
+<span class=cmd>/schedule */30 check git status, alert if uncommitted changes</span>
+<span class=output>Job #2 scheduled (*/30): check git status...</span>
+
+<span class=cmd>/jobs</span>
+<span class=output>#1 [09:00] pull latest and run test suite, report failures</span>
+<span class=output>#2 [*/30] check git status, alert if uncommitted changes</span></pre>
+    </div>
+  </section>
+
+  <div class=divider></div>
+
+  <!-- ====== MULTI-AGENT ====== -->
+  <section class=section>
+    <div class=eyebrow-lbl>MULTI-AGENT ORCHESTRATION</div>
+    <h2 class=big>Three agents. One task. Parallel execution.</h2>
+    <p class=lede>Fan out a task across specialized AI agents that work simultaneously, then merge their results into a single report.</p>
+
+    <div class=diagram>
+      <pre>
+  <span class=accent-text>User Task</span>
+       |
+       v
+  <span class=warn-text>[Strategy Selector]</span>
+    /     |     \            <span class=comment>   fan-out (parallel)</span>
+   v      v      v
+<span class=ok-text>[Agent 1]</span> <span class=ok-text>[Agent 2]</span> <span class=ok-text>[Agent 3]</span>   <span class=comment>  each has own Claude session</span>
+   \      |      /
+    v     v     v            <span class=comment>   fan-in (collect)</span>
+  <span class=accent-text>[Merge &amp; Format]</span>
+       |
+       v
+  <span class=accent-text>Combined Report</span></pre>
+    </div>
+
+    <div class=features-grid>
+      <div class=feature>
+        <div class=icon>&#x1F50D;</div>
+        <h3>Review strategy</h3>
+        <p>Analyzer + Tester + Reviewer. Three angles on your code: structure, edge cases, and quality.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>&#x1F528;</div>
+        <h3>Implement strategy</h3>
+        <p>Planner + Coder + Verifier. Get a plan, working code, and test coverage in one shot.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>&#x1F41E;</div>
+        <h3>Debug strategy</h3>
+        <p>Investigator + Hypothesizer + Fixer. Root cause, possible explanations, and a concrete fix.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class=divider></div>
+
+  <!-- ====== PLUGINS & TOOLS ====== -->
+  <section class=section>
+    <div class=eyebrow-lbl>EXTENSIBLE</div>
+    <h2 class=big>Plugins and MCP tools.</h2>
+    <p class=lede>Give Claude access to GitHub, web search, databases, browser automation, and more &mdash; via the Model Context Protocol.</p>
+
+    <div class=features-grid>
+      <div class=feature>
+        <div class=icon>&#x1F419;</div>
+        <h3>GitHub</h3>
+        <p>Issues, PRs, repos, code search &mdash; Claude can interact with GitHub directly via <code>gh mcp</code>.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>&#x1F310;</div>
+        <h3>Web Fetch</h3>
+        <p>HTTP requests, API calls, web scraping. Claude reaches out to the internet when needed.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>&#x1F4BE;</div>
+        <h3>SQLite</h3>
+        <p>Query and manage SQLite databases directly from Claude. Great for data analysis tasks.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>&#x1F9E0;</div>
+        <h3>Memory</h3>
+        <p>Persistent memory across sessions. Claude remembers facts and context you tell it to store.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>&#x1F310;</div>
+        <h3>Brave Search</h3>
+        <p>Web search via Brave API. Claude can look things up when it doesn't know the answer.</p>
+      </div>
+      <div class=feature>
+        <div class=icon>&#x1F9E9;</div>
+        <h3>Custom plugins</h3>
+        <p><code>/plugin custom name npx -y @scope/mcp</code> &mdash; install any MCP server as a plugin.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class=divider></div>
+
+  <!-- ====== API SHOWCASE ====== -->
+  <section class=section>
+    <div class=eyebrow-lbl>DEVELOPER API</div>
+    <h2 class=big>Automate everything.</h2>
+    <p class=lede>Trigger Claude runs from CI pipelines, scripts, or GitHub webhooks. Every feature is API-accessible.</p>
+
+    <div class=showcase>
+      <div class=showcase-title>Async run API</div>
+      <pre><span class=comment># Submit an async Claude run</span>
+<span class=cmd>curl -X POST https://claw.biswas.me/api/run \</span>
+<span class=cmd>  -H "Authorization: Bearer $TOKEN" \</span>
+<span class=cmd>  -H "Content-Type: application/json" \</span>
+<span class=cmd>  -d '{"prompt": "review the latest PR for security issues"}'</span>
+
+<span class=output>{"id":"run_171...","status":"pending"}</span>
+
+<span class=comment># Poll for result</span>
+<span class=cmd>curl https://claw.biswas.me/api/run?id=run_171... \</span>
+<span class=cmd>  -H "Authorization: Bearer $TOKEN"</span>
+
+<span class=output>{"status":"done","result":"I found 2 issues..."}</span></pre>
+    </div>
+
+    <div class=showcase>
+      <div class=showcase-title>GitHub webhook auto-review</div>
+      <pre><span class=comment># Set up in GitHub repo settings:</span>
+<span class=output>Payload URL: https://claw.biswas.me/api/webhook/github</span>
+<span class=output>Events: Pull requests, Issues, Pushes</span>
+
+<span class=comment># When a PR is opened, Claude automatically:</span>
+<span class=output>- Reviews code for bugs and security issues</span>
+<span class=output>- Suggests improvements</span>
+<span class=output>- Reports back via the job API</span></pre>
+    </div>
+  </section>
+
+  <div class=divider></div>
+
+  <!-- ====== HISTORY & SEARCH ====== -->
+  <section class=section>
+    <div class=eyebrow-lbl>PERSISTENT MEMORY</div>
+    <h2 class=big>Every conversation, searchable.</h2>
+    <p class=lede>All conversations are persisted as JSON Lines files. Full-text search across your entire history. Survives restarts.</p>
+
+    <div class=showcase>
+      <div class=showcase-title>Search past conversations</div>
+      <pre><span class=cmd>/search authentication</span>
+<span class=output>Found 5 results for 'authentication':</span>
+<span class=output></span>
+<span class=output>Apr 18 14:20 &rarr; how does authentication work</span>
+<span class=output>Apr 18 14:21 &larr; Authentication uses PBKDF2-SHA256...</span>
+<span class=output>Apr 18 16:05 &rarr; fix the authentication bug in auth.go</span>
+<span class=output>Apr 18 16:08 &larr; I've updated auth.go to fix the...</span></pre>
+    </div>
+  </section>
+
+  <div class=divider></div>
+
+  <!-- ====== SECURITY ====== -->
+  <section class=section>
+    <div class=eyebrow-lbl>SECURITY</div>
+    <h2 class=big>Seven layers of defense.</h2>
+    <p class=lede>Defense in depth from the edge to the container. Every layer is independent.</p>
+
+    <div class=security-layers>
+      <div class=sec-layer><div><h4>Cloudflare</h4><p>DDoS protection, SSL termination, WAF, proxied DNS</p></div></div>
+      <div class=sec-layer><div><h4>Nginx TLS</h4><p>Origin CA cert, loopback-only upstream, WebSocket support</p></div></div>
+      <div class=sec-layer><div><h4>Dashboard Auth</h4><p>PBKDF2-SHA256 (600k iterations), cookie sessions, timing-safe verification</p></div></div>
+      <div class=sec-layer><div><h4>Telegram Allowlist</h4><p>Numeric user ID whitelist, silent drop of unauthorized messages</p></div></div>
+      <div class=sec-layer><div><h4>API Auth</h4><p>Bearer token for REST API, HMAC-SHA256 for GitHub webhooks</p></div></div>
+      <div class=sec-layer><div><h4>Gateway Isolation</h4><p>Shared bearer token, no host port binding, separate env files</p></div></div>
+      <div class=sec-layer><div><h4>Container Sandbox</h4><p>Non-root users, Docker bridge network, scoped workspace volumes</p></div></div>
+    </div>
+  </section>
+
+  <div class=divider></div>
+
+  <!-- ====== COMMAND REFERENCE (SAMPLE) ====== -->
+  <section class=section>
+    <div class=eyebrow-lbl>30+ TELEGRAM COMMANDS</div>
+    <h2 class=big>Everything at your fingertips.</h2>
+
+    <div class=cmd-grid>
+      <div class=cmd-item><code>/clone owner/repo</code> <span>Clone a GitHub repo</span></div>
+      <div class=cmd-item><code>/pr Fix the bug</code> <span>Create a PR from changes</span></div>
+      <div class=cmd-item><code>/git diff</code> <span>Show uncommitted changes</span></div>
+      <div class=cmd-item><code>/project myapp</code> <span>Switch to a project</span></div>
+      <div class=cmd-item><code>/schedule 09:00 ...</code> <span>Daily scheduled task</span></div>
+      <div class=cmd-item><code>/orchestrate review ...</code> <span>Multi-agent review</span></div>
+      <div class=cmd-item><code>/plugin install memory</code> <span>Add a plugin</span></div>
+      <div class=cmd-item><code>/tool enable github</code> <span>Enable MCP tool</span></div>
+      <div class=cmd-item><code>/download file.py</code> <span>Get a file back</span></div>
+      <div class=cmd-item><code>/search auth</code> <span>Search chat history</span></div>
+      <div class=cmd-item><code>/history</code> <span>Recent conversations</span></div>
+      <div class=cmd-item><code>/files</code> <span>List workspace files</span></div>
+    </div>
+  </section>
+
+  <div class=divider></div>
+
+  <!-- ====== HOW IT WORKS ====== -->
+  <section class=section>
+    <div class=eyebrow-lbl>GETTING STARTED</div>
     <h2 class=big>From zero to agent in three steps.</h2>
 
     <div class=steps>
       <div class=step>
         <h3>Provision</h3>
-        <p>Run the ansible playbook against any Ubuntu host. You get nginx, Docker, a hardened bot container, and a sibling gateway container — wired together.</p>
+        <p>Run the Ansible playbook against any Ubuntu host. You get nginx, Docker, two containers, TLS, and a hardened firewall &mdash; all wired together.</p>
       </div>
       <div class=step>
-        <h3>Add accounts</h3>
-        <p>Provision operators with <code>openclaw useradd</code>. PBKDF2-hashed passwords live in a single JSON file, bind-mounted into the bot.</p>
+        <h3>Configure</h3>
+        <p>Run <code>finish-setup.sh</code> to set your Telegram token, Anthropic API key, and GitHub token. Provision dashboard accounts with <code>openclaw useradd</code>.</p>
       </div>
       <div class=step>
-        <h3>Sign in and chat</h3>
-        <p>Log into the console from any browser. Open the embedded gateway for a rich chat UI, or drive the agent from Telegram.</p>
+        <h3>Use it</h3>
+        <p>Message your bot on Telegram, open the web chat, call the API, or set up GitHub webhooks. Your agent is ready.</p>
       </div>
     </div>
   </section>
 
+  <div class=divider></div>
+
+  <!-- ====== UNDER THE HOOD ====== -->
   <section class=section>
     <div class=eyebrow-lbl>UNDER THE HOOD</div>
     <h2 class=big>Boring, auditable, reproducible.</h2>
-    <p class=lede>A small Go binary and a couple of containers. No background magic.</p>
+    <p class=lede>5,115 lines of Go, 16 source files, two containers. No framework sprawl, no background magic.</p>
 
     <div class=stack>
-      <span>Go 1.26 · stdlib only</span>
-      <span>zerolog</span>
-      <span>PBKDF2-SHA256</span>
-      <span>nginx reverse proxy</span>
-      <span>Cloudflare origin</span>
-      <span>Docker Compose</span>
-      <span>Ansible</span>
+      <span>Go 1.26</span>
       <span>Claude Code CLI</span>
       <span>Telegram Bot API</span>
+      <span>GitHub CLI</span>
+      <span>MCP Protocol</span>
+      <span>zerolog</span>
+      <span>PBKDF2-SHA256</span>
+      <span>nginx</span>
+      <span>Cloudflare</span>
+      <span>Docker Compose</span>
+      <span>Ansible</span>
+      <span>JSON Lines</span>
     </div>
   </section>
 
   <div class=foot>
-    <div>self-hosted · open source · MIT</div>
+    <div>self-hosted &middot; open source &middot; MIT</div>
     <div><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></div>
   </div>
 </div>
