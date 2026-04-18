@@ -50,6 +50,12 @@ Send any message and I'll pass it to Claude Code running on the server.
 Commands:
 /new — start a fresh Claude session
 /status — show current session info
+/clone <owner/repo> — clone a GitHub repo into workspace
+/git status — show workspace git status
+/git diff — show uncommitted changes
+/git log — show recent commits
+/git branch <name> — create and switch to a new branch
+/pr [title] — commit all changes, push, and create a GitHub PR
 /help — show this message`
 
 const (
@@ -209,18 +215,18 @@ func (b *Bot) handleMessage(ctx context.Context, m *tgMessage) {
 		return
 	}
 
-	switch text {
-	case "/start", "/help":
+	switch {
+	case text == "/start" || text == "/help":
 		_ = b.send(ctx, m.Chat.ID, helpText)
 		return
-	case "/new":
+	case text == "/new":
 		sess := b.state.Session(uid)
 		sess.mu.Lock()
 		sess.SessionID = ""
 		sess.mu.Unlock()
 		_ = b.send(ctx, m.Chat.ID, "🧹 New Claude session started.")
 		return
-	case "/status":
+	case text == "/status":
 		sess := b.state.Session(uid)
 		sid := sess.SessionID
 		if sid == "" {
@@ -231,6 +237,92 @@ func (b *Bot) handleMessage(ctx context.Context, m *tgMessage) {
 			model = "(default)"
 		}
 		_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("session_id: %s\ncwd: %s\nmodel: %s", sid, sess.Cwd, model))
+		return
+	case strings.HasPrefix(text, "/clone "):
+		repo := strings.TrimSpace(strings.TrimPrefix(text, "/clone "))
+		if repo == "" {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /clone owner/repo")
+			return
+		}
+		sess := b.state.Session(uid)
+		sess.mu.Lock()
+		b.typing(ctx, m.Chat.ID)
+		b.state.Record(uid, "in", text)
+		result, err := gitClone(ctx, sess.Cwd, repo)
+		sess.SessionID = "" // reset Claude session for new repo
+		sess.mu.Unlock()
+		if err != nil {
+			b.state.Record(uid, "error", err.Error())
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			b.state.Record(uid, "out", result)
+			_ = b.send(ctx, m.Chat.ID, "✅ "+result+"\nClaude session reset for new workspace.")
+		}
+		return
+	case text == "/git status":
+		sess := b.state.Session(uid)
+		b.state.Record(uid, "in", text)
+		result, err := gitStatus(ctx, sess.Cwd)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else if result == "" {
+			_ = b.send(ctx, m.Chat.ID, "Clean working tree.")
+		} else {
+			_ = b.send(ctx, m.Chat.ID, result)
+		}
+		return
+	case text == "/git diff":
+		sess := b.state.Session(uid)
+		b.state.Record(uid, "in", text)
+		result, err := gitDiff(ctx, sess.Cwd)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			for _, chunk := range chunks(result, maxTelegramMessage) {
+				_ = b.send(ctx, m.Chat.ID, chunk)
+			}
+		}
+		return
+	case text == "/git log":
+		sess := b.state.Session(uid)
+		b.state.Record(uid, "in", text)
+		result, err := gitLog(ctx, sess.Cwd)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, result)
+		}
+		return
+	case strings.HasPrefix(text, "/git branch "):
+		name := strings.TrimSpace(strings.TrimPrefix(text, "/git branch "))
+		if name == "" {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /git branch <name>")
+			return
+		}
+		sess := b.state.Session(uid)
+		b.state.Record(uid, "in", text)
+		result, err := gitBranch(ctx, sess.Cwd, name)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, "✅ "+result)
+		}
+		return
+	case text == "/pr" || strings.HasPrefix(text, "/pr "):
+		title := strings.TrimSpace(strings.TrimPrefix(text, "/pr"))
+		sess := b.state.Session(uid)
+		sess.mu.Lock()
+		b.typing(ctx, m.Chat.ID)
+		b.state.Record(uid, "in", text)
+		result, err := gitCreatePR(ctx, sess.Cwd, title)
+		sess.mu.Unlock()
+		if err != nil {
+			b.state.Record(uid, "error", err.Error())
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			b.state.Record(uid, "out", result)
+			_ = b.send(ctx, m.Chat.ID, "✅ "+result)
+		}
 		return
 	}
 
