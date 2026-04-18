@@ -136,12 +136,22 @@ func runServer() {
 		cancel()
 	}()
 
+	bot := NewBot(token, state, model)
+
+	projectsFile := filepath.Join(workspace, ".claw-projects.json")
+	bot.projects = NewProjectStore(projectsFile)
+
+	jobsFile := filepath.Join(workspace, ".claw-jobs.json")
+	scheduler := NewScheduler(jobsFile, bot)
+	bot.scheduler = scheduler
+
 	srv := &http.Server{
 		Addr: ":" + port,
 		Handler: NewDashboard(state, DashboardConfig{
 			Users:        users,
 			GatewayURL:   gatewayURL,
 			GatewayToken: gatewayToken,
+			Bot:          bot,
 		}),
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -150,7 +160,7 @@ func runServer() {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 
 	go func() {
 		defer wg.Done()
@@ -161,16 +171,6 @@ func runServer() {
 		}
 	}()
 
-	bot := NewBot(token, state, model)
-
-	projectsFile := filepath.Join(workspace, ".claw-projects.json")
-	bot.projects = NewProjectStore(projectsFile)
-
-	jobsFile := filepath.Join(workspace, ".claw-jobs.json")
-	scheduler := NewScheduler(jobsFile, bot)
-	bot.scheduler = scheduler
-
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		scheduler.Run(ctx)

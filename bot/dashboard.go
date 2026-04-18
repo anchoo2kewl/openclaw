@@ -769,6 +769,7 @@ type dashboardServer struct {
 	sessions    *sessionStore
 	gatewayURL  string
 	hasGateway  bool
+	bot         *Bot
 }
 
 // DashboardConfig groups external wiring so main.go can plumb the gateway
@@ -777,6 +778,7 @@ type DashboardConfig struct {
 	Users        *UserStore
 	GatewayURL   string // e.g. http://gateway:18789
 	GatewayToken string // shared secret for gateway.auth.token
+	Bot          *Bot   // for web chat to call Claude
 }
 
 // NewDashboard builds the full HTTP handler tree. Public endpoints: /,
@@ -788,6 +790,7 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 		sessions:   newSessionStore(12 * time.Hour),
 		gatewayURL: cfg.GatewayURL,
 		hasGateway: cfg.GatewayURL != "",
+		bot:        cfg.Bot,
 	}
 
 	mux := http.NewServeMux()
@@ -827,6 +830,9 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 			http.Redirect(w, r, target, http.StatusSeeOther)
 		})
 	}
+
+	mux.HandleFunc("/chat", d.handleChat)
+	mux.HandleFunc("/api/chat", d.handleChatAPI)
 
 	mux.HandleFunc("/", d.handleIndex)
 	return mux
