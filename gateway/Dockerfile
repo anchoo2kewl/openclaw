@@ -15,7 +15,7 @@ ARG OPENCLAW_VERSION=latest
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates tini curl \
+        ca-certificates git tini curl \
     && rm -rf /var/lib/apt/lists/* \
     && npm install -g openclaw@${OPENCLAW_VERSION} \
     && openclaw --version
