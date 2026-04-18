@@ -71,6 +71,8 @@ Commands:
 /tools — list available tool integrations
 /tool enable <name> — enable a tool (github, fetch, filesystem)
 /tool disable <name> — disable a tool
+/history — show recent conversation history
+/search <query> — search through past conversations
 Send any file/photo to save it to the workspace
 /help — show this message
 
@@ -97,6 +99,7 @@ type Bot struct {
 	scheduler *Scheduler
 	projects  *ProjectStore
 	tools     *ToolManager
+	history   *HistoryStore
 }
 
 func NewBot(token string, state *State, model string) *Bot {
@@ -563,6 +566,37 @@ func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, te
 			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Tool '%s' disabled.", name))
 		}
 		return
+	case text == "/history":
+		if b.history == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ History not available")
+			return
+		}
+		entries := b.history.Recent(uid, 20)
+		result := FormatEntries(entries)
+		for _, chunk := range chunks(result, maxTelegramMessage) {
+			_ = b.send(ctx, m.Chat.ID, chunk)
+		}
+		return
+	case strings.HasPrefix(text, "/search "):
+		query := strings.TrimSpace(strings.TrimPrefix(text, "/search "))
+		if query == "" {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /search <query>")
+			return
+		}
+		if b.history == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ History not available")
+			return
+		}
+		entries := b.history.Search(uid, query, 20)
+		if len(entries) == 0 {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("No results for '%s'.", query))
+			return
+		}
+		result := fmt.Sprintf("Found %d results for '%s':\n\n%s", len(entries), query, FormatEntries(entries))
+		for _, chunk := range chunks(result, maxTelegramMessage) {
+			_ = b.send(ctx, m.Chat.ID, chunk)
+		}
+		return
 	}
 
 	sess := b.state.Session(uid)
@@ -576,6 +610,9 @@ func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, te
 	defer sess.mu.Unlock()
 
 	b.state.Record(uid, "in", text)
+	if b.history != nil {
+		b.history.Append(uid, "in", text)
+	}
 	b.typing(ctx, m.Chat.ID)
 
 	callCtx, cancel := context.WithTimeout(ctx, 30*time.Minute)
@@ -586,8 +623,14 @@ func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, te
 		log.Error().Err(err).Int64("uid", uid).Msg("claude failed")
 		reply = "❌ " + err.Error()
 		b.state.Record(uid, "error", reply)
+		if b.history != nil {
+			b.history.Append(uid, "error", reply)
+		}
 	} else {
 		b.state.Record(uid, "out", reply)
+		if b.history != nil {
+			b.history.Append(uid, "out", reply)
+		}
 	}
 
 	for _, chunk := range chunks(reply, maxTelegramMessage) {

@@ -833,6 +833,7 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 
 	mux.HandleFunc("/chat", d.handleChat)
 	mux.HandleFunc("/api/chat", d.handleChatAPI)
+	mux.HandleFunc("/api/history", d.handleHistoryAPI)
 
 	mux.HandleFunc("/", d.handleIndex)
 	return mux
@@ -1005,6 +1006,33 @@ func (d *dashboardServer) handleAPIStatus(w http.ResponseWriter, r *http.Request
 		"allowed_users":  s.Allowed,
 		"events":         len(s.Events()),
 	})
+}
+
+func (d *dashboardServer) handleHistoryAPI(w http.ResponseWriter, r *http.Request) {
+	if d.sessions.authedEmail(r) == "" {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+	if d.bot == nil || d.bot.history == nil {
+		http.Error(w, `{"error":"history not available"}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	query := r.URL.Query().Get("q")
+	w.Header().Set("Content-Type", "application/json")
+
+	if query != "" {
+		results := d.bot.history.SearchAll(query, 50)
+		json.NewEncoder(w).Encode(results)
+	} else {
+		// Return recent history for all users.
+		var all []HistoryEntry
+		for _, uid := range d.state.Allowed {
+			entries := d.bot.history.Recent(uid, 20)
+			all = append(all, entries...)
+		}
+		json.NewEncoder(w).Encode(all)
+	}
 }
 
 func (d *dashboardServer) renderLogin(w http.ResponseWriter, errMsg string) {
