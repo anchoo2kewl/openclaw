@@ -770,6 +770,7 @@ type dashboardServer struct {
 	gatewayURL  string
 	hasGateway  bool
 	bot         *Bot
+	jobRunner   *JobRunner
 }
 
 // DashboardConfig groups external wiring so main.go can plumb the gateway
@@ -784,6 +785,10 @@ type DashboardConfig struct {
 // NewDashboard builds the full HTTP handler tree. Public endpoints: /,
 // /login, /logout, /health. /api/status and /gateway/ require auth.
 func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
+	var jr *JobRunner
+	if cfg.Bot != nil {
+		jr = NewJobRunner(cfg.Bot)
+	}
 	d := &dashboardServer{
 		state:      s,
 		users:      cfg.Users,
@@ -791,6 +796,7 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 		gatewayURL: cfg.GatewayURL,
 		hasGateway: cfg.GatewayURL != "",
 		bot:        cfg.Bot,
+		jobRunner:  jr,
 	}
 
 	mux := http.NewServeMux()
@@ -834,6 +840,8 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 	mux.HandleFunc("/chat", d.handleChat)
 	mux.HandleFunc("/api/chat", d.handleChatAPI)
 	mux.HandleFunc("/api/history", d.handleHistoryAPI)
+	mux.HandleFunc("/api/run", d.handleAPIRun)
+	mux.HandleFunc("/api/webhook/github", d.handleGitHubWebhook)
 
 	mux.HandleFunc("/", d.handleIndex)
 	return mux
