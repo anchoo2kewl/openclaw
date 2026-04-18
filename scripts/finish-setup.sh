@@ -50,6 +50,7 @@ TELEGRAM_BOT_TOKEN=$(prompt "TELEGRAM_BOT_TOKEN:" "${existing[TELEGRAM_BOT_TOKEN
 TELEGRAM_ALLOWED_USER_IDS=$(prompt "TELEGRAM_ALLOWED_USER_IDS (comma-separated):" "${existing[TELEGRAM_ALLOWED_USER_IDS]:-}")
 ANTHROPIC_API_KEY=$(prompt "ANTHROPIC_API_KEY:" "${existing[ANTHROPIC_API_KEY]:-}")
 CLAUDE_MODEL=$(prompt "CLAUDE_MODEL:" "${existing[CLAUDE_MODEL]:-}" "claude-sonnet-4-5")
+GH_TOKEN=$(prompt "GH_TOKEN (GitHub PAT for /pr command, optional):" "${existing[GH_TOKEN]:-}")
 
 cat >"${ENV_FILE}" <<EOF
 # openclaw runtime config
@@ -58,7 +59,16 @@ TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
 TELEGRAM_ALLOWED_USER_IDS=${TELEGRAM_ALLOWED_USER_IDS}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 CLAUDE_MODEL=${CLAUDE_MODEL}
+GH_TOKEN=${GH_TOKEN}
 EOF
+
+# Preserve any extra keys not managed by this script (e.g. OPENCLAW_GATEWAY_TOKEN)
+for key in "${!existing[@]}"; do
+    case "${key}" in
+        TELEGRAM_BOT_TOKEN|TELEGRAM_ALLOWED_USER_IDS|ANTHROPIC_API_KEY|CLAUDE_MODEL|GH_TOKEN) ;;
+        *) echo "${key}=${existing[${key}]}" >> "${ENV_FILE}" ;;
+    esac
+done
 
 chmod 600 "${ENV_FILE}"
 chown root:root "${ENV_FILE}"

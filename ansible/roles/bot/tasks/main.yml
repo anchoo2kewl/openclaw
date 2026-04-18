@@ -46,6 +46,7 @@
       TELEGRAM_ALLOWED_USER_IDS=
       ANTHROPIC_API_KEY=
       CLAUDE_MODEL=claude-sonnet-4-5
+      GH_TOKEN=
 
 - name: Ensure data directory exists (bind-mounted into container)
   ansible.builtin.file:
