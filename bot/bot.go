@@ -73,6 +73,8 @@ Commands:
 /tool disable <name> — disable a tool
 /history — show recent conversation history
 /search <query> — search through past conversations
+/orchestrate <strategy> <task> — run multi-agent workflow
+/strategies — list available orchestration strategies
 Send any file/photo to save it to the workspace
 /help — show this message
 
@@ -594,6 +596,42 @@ func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, te
 		}
 		result := fmt.Sprintf("Found %d results for '%s':\n\n%s", len(entries), query, FormatEntries(entries))
 		for _, chunk := range chunks(result, maxTelegramMessage) {
+			_ = b.send(ctx, m.Chat.ID, chunk)
+		}
+		return
+	case text == "/strategies":
+		_ = b.send(ctx, m.Chat.ID, ListStrategies())
+		return
+	case strings.HasPrefix(text, "/orchestrate "):
+		rest := strings.TrimSpace(strings.TrimPrefix(text, "/orchestrate "))
+		parts := strings.SplitN(rest, " ", 2)
+		if len(parts) < 2 {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /orchestrate <strategy> <task>\n\n"+ListStrategies())
+			return
+		}
+		strategyName := strings.ToLower(parts[0])
+		task := parts[1]
+		strategy, ok := strategies[strategyName]
+		if !ok {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("Unknown strategy '%s'.\n\n%s", strategyName, ListStrategies()))
+			return
+		}
+
+		sess := b.state.Session(uid)
+		_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("🚀 Starting %s orchestration with %d agents...", strategy.Name, len(strategy.Agents)))
+		b.typing(ctx, m.Chat.ID)
+		b.state.Record(uid, "in", text)
+
+		results := Orchestrate(ctx, strategy, task, sess.Cwd, b.model)
+		output := FormatOrchestrationResults(strategy.Name, results)
+
+		b.state.Record(uid, "out", output)
+		if b.history != nil {
+			b.history.Append(uid, "in", text)
+			b.history.Append(uid, "out", output)
+		}
+
+		for _, chunk := range chunks(output, maxTelegramMessage) {
 			_ = b.send(ctx, m.Chat.ID, chunk)
 		}
 		return

@@ -841,6 +841,7 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 	mux.HandleFunc("/api/chat", d.handleChatAPI)
 	mux.HandleFunc("/api/history", d.handleHistoryAPI)
 	mux.HandleFunc("/api/run", d.handleAPIRun)
+	mux.HandleFunc("/api/orchestrate", d.handleOrchestrate)
 	mux.HandleFunc("/api/webhook/github", d.handleGitHubWebhook)
 
 	mux.HandleFunc("/", d.handleIndex)

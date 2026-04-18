@@ -182,6 +182,59 @@ func (d *dashboardServer) handleAPIRun(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ---------- Orchestration API ------------------------------------------------
+
+func (d *dashboardServer) handleOrchestrate(w http.ResponseWriter, r *http.Request) {
+	if !apiAuth(r) && d.sessions.authedEmail(r) == "" {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+	if r.Method == "GET" {
+		// List strategies.
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(strategies)
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Strategy  string `json:"strategy"`
+		Task      string `json:"task"`
+		Workspace string `json:"workspace,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Task == "" || req.Strategy == "" {
+		http.Error(w, `{"error":"strategy and task are required"}`, http.StatusBadRequest)
+		return
+	}
+
+	strategy, ok := strategies[strings.ToLower(req.Strategy)]
+	if !ok {
+		http.Error(w, `{"error":"unknown strategy"}`, http.StatusBadRequest)
+		return
+	}
+
+	workspace := req.Workspace
+	if workspace == "" {
+		workspace = d.state.Workspace
+	}
+
+	if d.bot == nil {
+		http.Error(w, `{"error":"bot not available"}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	results := Orchestrate(r.Context(), strategy, req.Task, workspace, d.bot.model)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"strategy": strategy.Name,
+		"results":  results,
+	})
+}
+
 // ---------- GitHub webhook handler -------------------------------------------
 
 type ghWebhookPayload struct {
