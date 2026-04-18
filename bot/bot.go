@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -64,6 +65,9 @@ Commands:
 /schedule <cron> <prompt> — schedule a recurring task
 /jobs — list scheduled jobs
 /cancel <id> — cancel a scheduled job
+/project <name> — create/switch to a named project
+/projects — list all projects
+/project delete <name> — delete a project
 Send any file/photo to save it to the workspace
 /help — show this message
 
@@ -88,6 +92,7 @@ type Bot struct {
 	offset    int
 	sem       chan struct{}
 	scheduler *Scheduler
+	projects  *ProjectStore
 }
 
 func NewBot(token string, state *State, model string) *Bot {
@@ -455,6 +460,73 @@ func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, te
 		} else {
 			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("❌ Job #%d not found.", id))
 		}
+		return
+	case text == "/projects":
+		if b.projects == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Projects not available")
+			return
+		}
+		sess := b.state.Session(uid)
+		userWs := filepath.Join(b.state.Workspace, strconv.FormatInt(uid, 10))
+		projects, err := b.projects.ListProjects(userWs)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+			return
+		}
+		current := b.projects.CurrentProject(uid)
+		if len(projects) == 0 {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("No projects yet. Current workspace: %s\nUse /project <name> to create one.", sess.Cwd))
+			return
+		}
+		var sb strings.Builder
+		for _, p := range projects {
+			marker := "  "
+			if p == current {
+				marker = "▶ "
+			}
+			fmt.Fprintf(&sb, "%s%s\n", marker, p)
+		}
+		_ = b.send(ctx, m.Chat.ID, sb.String())
+		return
+	case strings.HasPrefix(text, "/project delete "):
+		name := strings.TrimSpace(strings.TrimPrefix(text, "/project delete "))
+		if name == "" {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /project delete <name>")
+			return
+		}
+		if b.projects == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Projects not available")
+			return
+		}
+		userWs := filepath.Join(b.state.Workspace, strconv.FormatInt(uid, 10))
+		if err := b.projects.DeleteProject(uid, userWs, name); err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+		} else {
+			_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Project '%s' deleted.", name))
+		}
+		return
+	case strings.HasPrefix(text, "/project "):
+		name := strings.TrimSpace(strings.TrimPrefix(text, "/project "))
+		if name == "" {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /project <name>")
+			return
+		}
+		if b.projects == nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Projects not available")
+			return
+		}
+		sess := b.state.Session(uid)
+		userWs := filepath.Join(b.state.Workspace, strconv.FormatInt(uid, 10))
+		projectDir, err := b.projects.SwitchProject(uid, userWs, name)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ "+err.Error())
+			return
+		}
+		sess.mu.Lock()
+		sess.Cwd = projectDir
+		sess.SessionID = "" // new project = new Claude session
+		sess.mu.Unlock()
+		_ = b.send(ctx, m.Chat.ID, fmt.Sprintf("✅ Switched to project '%s'\nWorkspace: %s\nClaude session reset.", name, projectDir))
 		return
 	}
 

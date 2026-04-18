@@ -163,6 +163,9 @@ func runServer() {
 
 	bot := NewBot(token, state, model)
 
+	projectsFile := filepath.Join(workspace, ".claw-projects.json")
+	bot.projects = NewProjectStore(projectsFile)
+
 	jobsFile := filepath.Join(workspace, ".claw-jobs.json")
 	scheduler := NewScheduler(jobsFile, bot)
 	bot.scheduler = scheduler
