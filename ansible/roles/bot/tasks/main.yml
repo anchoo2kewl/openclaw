@@ -145,7 +145,7 @@
 
 - name: Build bot image (always)
   ansible.builtin.command:
-    cmd: docker compose -f {{ claw_install_dir }}/bot/docker-compose.yml build
+    cmd: docker compose -f {{ claw_install_dir }}/bot/docker-compose.yml build --no-cache
   changed_when: true
 
 - name: Start bot stack when .env is populated
