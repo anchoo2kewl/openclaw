@@ -7,71 +7,55 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, openclaw]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to production VM
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          COMMIT_SHA: ${{ github.sha }}
+      - name: Sync source to install directory
         run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan 43.173.90.12 >> ~/.ssh/known_hosts
+          INSTALL_DIR=/opt/openclaw
 
-          echo "Deploying commit $COMMIT_SHA to claw.biswas.me..."
+          echo "Syncing source files..."
+          sudo rsync -a --delete --exclude=.git --exclude=__pycache__ --exclude=openclaw $GITHUB_WORKSPACE/bot/ $INSTALL_DIR/bot/
+          sudo rsync -a --delete --exclude=.git $GITHUB_WORKSPACE/gateway/ $INSTALL_DIR/gateway/
+          sudo rsync -a --delete --exclude=.git $GITHUB_WORKSPACE/scripts/ $INSTALL_DIR/scripts/
+          sudo chmod -R 755 $INSTALL_DIR/scripts/
 
-          ssh -i ~/.ssh/deploy_key ubuntu@43.173.90.12 bash -s <<'EOF'
-            set -e
-            INSTALL_DIR=/opt/openclaw
-            REPO_DIR=/home/ubuntu/openclaw-repo
+      - name: Build bot image
+        run: |
+          echo "Building bot image..."
+          sudo docker compose -f /opt/openclaw/bot/docker-compose.yml build --no-cache
 
-            # Pull latest code from GitHub
-            if [ -d "$REPO_DIR/.git" ]; then
-              cd $REPO_DIR
-              sudo git fetch origin
-              sudo git reset --hard origin/main
-            else
-              sudo git clone https://github.com/anchoo2kewl/openclaw.git $REPO_DIR
-            fi
+      - name: Restart containers
+        run: |
+          echo "Restarting containers..."
+          sudo docker compose -f /opt/openclaw/bot/docker-compose.yml up -d
 
-            # Sync source files (same as ansible synchronize)
-            sudo rsync -a --delete --exclude=.git --exclude=__pycache__ --exclude=openclaw $REPO_DIR/bot/ $INSTALL_DIR/bot/
-            sudo rsync -a --delete --exclude=.git $REPO_DIR/gateway/ $INSTALL_DIR/gateway/
-            sudo rsync -a --delete --exclude=.git $REPO_DIR/scripts/ $INSTALL_DIR/scripts/
-            sudo chmod -R 755 $INSTALL_DIR/scripts/
-
-            # Build and restart containers
-            echo "Building bot image..."
-            sudo docker compose -f $INSTALL_DIR/bot/docker-compose.yml build --no-cache
-
-            echo "Restarting containers..."
-            sudo docker compose -f $INSTALL_DIR/bot/docker-compose.yml up -d
-
-            echo "Verifying containers are running..."
-            sleep 5
-            sudo docker compose -f $INSTALL_DIR/bot/docker-compose.yml ps
-          EOF
+          echo "Waiting for startup..."
+          sleep 5
+          sudo docker compose -f /opt/openclaw/bot/docker-compose.yml ps
 
       - name: Health check
-        continue-on-error: true
         run: |
-          echo "Waiting for application to start..."
-          sleep 15
-          curl -f --connect-timeout 15 --max-time 30 https://claw.biswas.me/health || {
-            echo "Health check failed (non-blocking)"
-            exit 0
-          }
-          echo "Health check passed"
+          echo "Running health check..."
+          for i in 1 2 3 4 5; do
+            if curl -sf --connect-timeout 5 --max-time 10 http://127.0.0.1:8080/health; then
+              echo ""
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
 
       - name: Deployment summary
         run: |
           echo "## Deploy Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Server:** 43.173.90.12 (claw.biswas.me)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server:** claw.biswas.me" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
