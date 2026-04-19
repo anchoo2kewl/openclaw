@@ -8,7 +8,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - name: Checkout code
@@ -29,22 +28,21 @@ jobs:
           ssh -i ~/.ssh/deploy_key ubuntu@43.173.90.12 bash -s <<'EOF'
             set -e
             INSTALL_DIR=/opt/openclaw
+            REPO_DIR=/home/ubuntu/openclaw-repo
 
             # Pull latest code from GitHub
-            cd $INSTALL_DIR
-            if [ -d "repo/.git" ]; then
-              cd repo
+            if [ -d "$REPO_DIR/.git" ]; then
+              cd $REPO_DIR
               sudo git fetch origin
               sudo git reset --hard origin/main
             else
-              sudo git clone https://github.com/anchoo2kewl/openclaw.git repo
-              cd repo
+              sudo git clone https://github.com/anchoo2kewl/openclaw.git $REPO_DIR
             fi
 
             # Sync source files (same as ansible synchronize)
-            sudo rsync -a --delete --exclude=.git --exclude=__pycache__ --exclude=openclaw repo/bot/ $INSTALL_DIR/bot/
-            sudo rsync -a --delete --exclude=.git repo/gateway/ $INSTALL_DIR/gateway/
-            sudo rsync -a --delete --exclude=.git repo/scripts/ $INSTALL_DIR/scripts/
+            sudo rsync -a --delete --exclude=.git --exclude=__pycache__ --exclude=openclaw $REPO_DIR/bot/ $INSTALL_DIR/bot/
+            sudo rsync -a --delete --exclude=.git $REPO_DIR/gateway/ $INSTALL_DIR/gateway/
+            sudo rsync -a --delete --exclude=.git $REPO_DIR/scripts/ $INSTALL_DIR/scripts/
             sudo chmod -R 755 $INSTALL_DIR/scripts/
 
             # Build and restart containers
