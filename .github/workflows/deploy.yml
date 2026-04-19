@@ -1,0 +1,79 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production VM
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan 43.173.90.12 >> ~/.ssh/known_hosts
+
+          echo "Deploying commit $COMMIT_SHA to claw.biswas.me..."
+
+          ssh -i ~/.ssh/deploy_key ubuntu@43.173.90.12 bash -s <<'EOF'
+            set -e
+            INSTALL_DIR=/opt/openclaw
+
+            # Pull latest code from GitHub
+            cd $INSTALL_DIR
+            if [ -d "repo/.git" ]; then
+              cd repo
+              sudo git fetch origin
+              sudo git reset --hard origin/main
+            else
+              sudo git clone https://github.com/anchoo2kewl/openclaw.git repo
+              cd repo
+            fi
+
+            # Sync source files (same as ansible synchronize)
+            sudo rsync -a --delete --exclude=.git --exclude=__pycache__ --exclude=openclaw repo/bot/ $INSTALL_DIR/bot/
+            sudo rsync -a --delete --exclude=.git repo/gateway/ $INSTALL_DIR/gateway/
+            sudo rsync -a --delete --exclude=.git repo/scripts/ $INSTALL_DIR/scripts/
+            sudo chmod -R 755 $INSTALL_DIR/scripts/
+
+            # Build and restart containers
+            echo "Building bot image..."
+            sudo docker compose -f $INSTALL_DIR/bot/docker-compose.yml build --no-cache
+
+            echo "Restarting containers..."
+            sudo docker compose -f $INSTALL_DIR/bot/docker-compose.yml up -d
+
+            echo "Verifying containers are running..."
+            sleep 5
+            sudo docker compose -f $INSTALL_DIR/bot/docker-compose.yml ps
+          EOF
+
+      - name: Health check
+        continue-on-error: true
+        run: |
+          echo "Waiting for application to start..."
+          sleep 15
+          curl -f --connect-timeout 15 --max-time 30 https://claw.biswas.me/health || {
+            echo "Health check failed (non-blocking)"
+            exit 0
+          }
+          echo "Health check passed"
+
+      - name: Deployment summary
+        run: |
+          echo "## Deploy Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server:** 43.173.90.12 (claw.biswas.me)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
