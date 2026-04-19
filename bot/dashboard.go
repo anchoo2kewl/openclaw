@@ -88,761 +88,1120 @@ func fmtUptime(d time.Duration) string {
 // ---------- HTML templates -------------------------------------------------
 
 const dashboardCSS = `
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Inter+Tight:wght@400;500;600;700;800;900&display=swap');
 :root {
-  color-scheme: dark;
-  --bg:        #0a0c10;
-  --bg-soft:   #0f131a;
-  --card:      #12161f;
-  --card-2:    #171c27;
-  --border:    #1f2632;
-  --border-2:  #2a3444;
-  --fg:        #e6e9ef;
-  --fg-dim:    #c8d0dd;
-  --muted:     #8b94a8;
-  --muted-2:   #6b7589;
-  --accent:    #6366f1;
-  --accent-2:  #8b5cf6;
-  --ok:        #34d399;
-  --warn:      #f59e0b;
-  --err:       #f87171;
-  --info:      #60a5fa;
-  --radius:    12px;
-  --shadow-1:  0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
+  --bg: #05070a;
+  --bg-1: #0a0d12;
+  --bg-2: #0f1319;
+  --bg-3: #151a22;
+  --panel: #0b0f14;
+  --panel-hi: #111722;
+  --line: rgba(120, 255, 170, 0.08);
+  --line-hi: rgba(120, 255, 170, 0.16);
+  --line-strong: rgba(120, 255, 170, 0.28);
+  --ink: #dbe6d9;
+  --ink-dim: #8a9a8e;
+  --ink-faint: #5a6a62;
+  --ink-ghost: #36433c;
+  --phosphor: oklch(0.85 0.18 145);
+  --phosphor-dim: oklch(0.62 0.14 145);
+  --phosphor-wash: oklch(0.85 0.18 145 / 0.12);
+  --cyan: oklch(0.82 0.12 215);
+  --amber: oklch(0.82 0.15 75);
+  --red: oklch(0.7  0.21 20);
+  --violet: oklch(0.72 0.16 295);
+  --r-s: 3px;
+  --r-m: 6px;
+  --r-l: 10px;
+  --glow: 0 0 0 1px rgba(120,255,170,0.12), 0 0 40px -12px rgba(120,255,170,0.25);
+  --glow-hi: 0 0 0 1px rgba(120,255,170,0.35), 0 0 60px -10px rgba(120,255,170,0.5);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", ui-sans-serif, system-ui, sans-serif;
-  background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(99,102,241,0.08), transparent 60%),
-    radial-gradient(900px 500px at 90% -20%, rgba(139,92,246,0.06), transparent 60%),
-    var(--bg);
-  color: var(--fg);
-  line-height: 1.5;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
-a { color: var(--info); text-decoration: none; }
-a:hover { text-decoration: underline; }
-code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; font-size: 0.92em; }
-.muted { color: var(--muted); }
-h1, h2, h3 { letter-spacing: -0.01em; }
-h1 { margin: 0; font-size: 22px; font-weight: 700; }
-h2 { margin: 28px 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
-
-/* ---------- top nav (authed) ---------- */
-.nav {
-  position: sticky; top: 0; z-index: 50;
-  background: rgba(10,12,16,0.78);
-  backdrop-filter: saturate(140%) blur(10px);
-  -webkit-backdrop-filter: saturate(140%) blur(10px);
-  border-bottom: 1px solid var(--border);
-}
-.nav-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 12px 24px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; }
-.brand-mark {
-  width: 28px; height: 28px;
-  display: inline-flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  filter: drop-shadow(0 4px 14px rgba(99,102,241,0.35));
-}
-.brand-mark svg { width: 100%; height: 100%; display: block; }
-.brand-mark.lg { width: 44px; height: 44px; }
-.brand-mark.xl { width: 72px; height: 72px; }
-.nav a.tab {
-  color: var(--fg-dim); font-size: 13px; font-weight: 500;
-  padding: 7px 12px; border-radius: 8px; text-decoration: none;
-  display: inline-flex; align-items: center; gap: 6px;
-}
-.nav a.tab:hover { background: var(--card); color: var(--fg); text-decoration: none; }
-.nav .spacer { flex: 1; }
-.nav .who { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
-
-/* ---------- container ---------- */
-.wrap { max-width: 1100px; margin: 0 auto; padding: 28px 24px 80px; }
-
-/* ---------- hero on authed page ---------- */
-.hero-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
-.hero-title { font-size: 24px; font-weight: 700; }
-.hero-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 8px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(52,211,153,0.15); }
-
-/* ---------- cards ---------- */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  box-shadow: var(--shadow-1);
-}
-.card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--fg); }
-
-/* ---------- stats row ---------- */
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 10px; }
-.stat .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.stat .v { font-size: 24px; margin-top: 4px; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--fg); word-break: break-all; }
-.stat .hint { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
-.stat.accent { background: linear-gradient(180deg, rgba(99,102,241,0.12), rgba(99,102,241,0.02)); border-color: rgba(99,102,241,0.35); }
-
-/* ---------- two-column layout for sections ---------- */
-.cols { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 18px; }
-@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
-
-.section-card { padding: 0; overflow: hidden; }
-.section-card > .hd {
-  padding: 12px 18px; border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-}
-.section-card > .hd .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
-.section-card > .hd .count { font-size: 11px; color: var(--muted-2); font-variant-numeric: tabular-nums; }
-.section-card > .body { padding: 14px 18px; }
-.section-card > .body.tight { padding: 0; }
-
-/* ---------- tables ---------- */
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-td, th { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
-tbody tr:last-child td { border-bottom: none; }
-th { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; background: var(--bg-soft); }
-.dir-in { color: var(--info); font-weight: 600; }
-.dir-out { color: var(--ok); font-weight: 600; }
-.dir-error { color: var(--err); font-weight: 600; }
-
-/* ---------- pre / logs ---------- */
-pre {
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 16px;
-  overflow: auto;
-  font-size: 12px;
-  line-height: 1.55;
-  color: var(--fg-dim);
-  margin: 0;
-  max-height: 360px;
-}
-pre::-webkit-scrollbar { width: 8px; height: 8px; }
-pre::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 8px; }
-
-/* ---------- buttons ---------- */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 8px 14px; border-radius: 8px;
-  background: var(--card-2); color: var(--fg); border: 1px solid var(--border-2);
-  font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none;
-  transition: background .12s ease, border-color .12s ease, transform .06s ease;
-  font-family: inherit;
-}
-.btn:hover { background: #202636; border-color: #364156; text-decoration: none; }
-.btn:active { transform: translateY(1px); }
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  border-color: transparent;
-  color: white;
-  box-shadow: 0 6px 18px rgba(99,102,241,0.35);
-}
-.btn-primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
-.btn-ghost { background: transparent; border-color: var(--border); }
-.btn-ghost:hover { background: var(--card); }
-
-/* ---------- footer ---------- */
-.foot {
-  margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border);
-  font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-}
-
-/* ---------- login form ---------- */
-.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-form.login {
-  width: 100%; max-width: 380px;
-  padding: 32px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 20px 60px rgba(0,0,0,0.45);
-}
-form.login .brand { margin-bottom: 6px; }
-form.login .sublabel { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
-form.login label {
-  display: block; font-size: 11px; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 6px;
-  font-weight: 600;
-}
-form.login input {
-  width: 100%;
-  padding: 11px 13px;
-  background: var(--bg-soft);
-  color: var(--fg);
-  border: 1px solid var(--border-2);
-  border-radius: 9px;
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-feature-settings: 'ss01', 'ss02', 'cv11';
   font-size: 14px;
-  font-family: inherit;
-  -webkit-appearance: none; appearance: none;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
-form.login input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
-form.login input:-webkit-autofill,
-form.login input:-webkit-autofill:hover,
-form.login input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px var(--bg-soft) inset !important;
-  -webkit-text-fill-color: var(--fg) !important;
-  caret-color: var(--fg);
+body {
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(120,255,170,0.06), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(120,200,255,0.03), transparent 60%),
+    linear-gradient(to bottom, #05070a 0%, #04060a 100%);
+  background-attachment: fixed;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 3px);
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+  z-index: 9999;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(120,255,170,0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(120,255,170,0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  z-index: 1;
+  mask-image: radial-gradient(ellipse 120% 80% at 50% 30%, black, transparent 80%);
+}
+.prose { font-family: 'Inter Tight', ui-sans-serif, system-ui, sans-serif; }
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.kicker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--phosphor);
+}
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.ink-dim { color: var(--ink-dim); }
+.ink-faint { color: var(--ink-faint); }
+.numeric { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+.cursor {
+  display: inline-block; width: 0.55em; height: 1em;
+  background: var(--phosphor); vertical-align: -0.15em;
+  animation: blink 1.05s steps(2, end) infinite;
+  margin-left: 0.15em;
+  box-shadow: 0 0 6px var(--phosphor);
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; background: transparent;
+  border: 1px solid var(--line-hi); color: var(--ink);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 500;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: pointer; border-radius: var(--r-s);
+  transition: all 0.12s ease; text-decoration: none;
+}
+.btn:hover { border-color: var(--phosphor); color: var(--phosphor); background: var(--phosphor-wash); }
+.btn-primary { background: var(--phosphor); color: #041008; border-color: var(--phosphor); font-weight: 700; }
+.btn-primary:hover { background: transparent; color: var(--phosphor); box-shadow: var(--glow-hi); }
+.btn-ghost { border-color: transparent; color: var(--ink-dim); }
+.btn-ghost:hover { color: var(--phosphor); background: transparent; }
+
+/* Panel / Card */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-m); position: relative; }
+.panel-hi { background: var(--panel-hi); border: 1px solid var(--line-hi); border-radius: var(--r-m); }
+
+/* Corner tics */
+.corner { position: relative; }
+.corner::before, .corner::after {
+  content: ''; position: absolute; width: 8px; height: 8px;
+  border-color: var(--phosphor); border-style: solid; opacity: 0.5;
+}
+.corner::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+.corner::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+/* Status dot */
+.dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; vertical-align: 0.1em; }
+.dot.ok { background: var(--phosphor); box-shadow: 0 0 8px var(--phosphor); }
+.dot.warn { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.dot.err { background: var(--red); box-shadow: 0 0 8px var(--red); }
+.dot.idle { background: var(--ink-ghost); }
+
+/* Pulse */
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(120,255,170,0.5); }
+  100% { box-shadow: 0 0 0 10px rgba(120,255,170,0); }
+}
+.pulse { animation: pulse-ring 1.6s ease-out infinite; border-radius: 50%; }
+
+/* Chip */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; font-size: 10.5px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid var(--line-hi); border-radius: 3px;
+  color: var(--ink-dim); background: rgba(10,14,18,0.6);
+}
+.chip-green { color: var(--phosphor); border-color: rgba(120,255,170,0.3); }
+.chip-amber { color: var(--amber); border-color: rgba(255,180,70,0.3); }
+.chip-cyan { color: var(--cyan); border-color: rgba(130,210,255,0.3); }
+
+/* Inputs */
+input, textarea, select {
+  background: var(--bg-1); border: 1px solid var(--line);
+  color: var(--ink); font-family: inherit; font-size: 13px;
+  padding: 8px 12px; border-radius: var(--r-s); outline: none;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--phosphor);
+  box-shadow: 0 0 0 3px var(--phosphor-wash);
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-1) inset !important;
+  -webkit-text-fill-color: var(--ink) !important;
+  caret-color: var(--ink);
   transition: background-color 9999s ease-in-out 0s;
 }
-form.login button { width: 100%; padding: 11px; margin-top: 22px; font-size: 14px; }
-.err { color: var(--err); font-size: 13px; margin-top: 14px; padding: 10px 12px; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; }
 
-/* ---------- public landing ---------- */
-.landing { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
-.landing-nav { display: flex; align-items: center; padding: 18px 0; }
-.landing-nav .spacer { flex: 1; }
-.landing-hero {
-  padding: 72px 0 56px;
-  text-align: center;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 56px;
-}
-.landing-hero .eyebrow {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 12px; border: 1px solid var(--border-2); border-radius: 999px;
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
-  background: var(--card); margin-bottom: 18px;
-}
-.landing-hero h1 {
-  font-size: 56px; line-height: 1.05; font-weight: 800; letter-spacing: -0.025em;
-  margin: 0 auto; max-width: 760px;
-}
-.landing-hero h1 span {
-  background: linear-gradient(135deg, #c4b5fd, #818cf8);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.landing-hero p.tagline {
-  margin: 22px auto 0; max-width: 620px; font-size: 17px; color: var(--fg-dim); line-height: 1.55;
-}
-.landing-hero .cta { display: flex; gap: 12px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-hi); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--line-strong); background-clip: padding-box; border: 2px solid transparent; }
 
-.section { margin-bottom: 64px; }
-.section .eyebrow-lbl {
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
-  color: var(--accent); font-weight: 700; margin-bottom: 8px;
-}
-.section h2.big { font-size: 28px; margin: 0 0 10px; color: var(--fg); text-transform: none; letter-spacing: -0.01em; }
-.section .lede { font-size: 15px; color: var(--muted); max-width: 640px; }
+/* Links */
+a { color: var(--phosphor); text-decoration: none; transition: opacity 0.1s; }
+a:hover { opacity: 0.8; }
 
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 14px; margin-top: 28px;
-}
-.feature {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 22px;
-  transition: border-color .2s ease, transform .2s ease;
-}
-.feature:hover { border-color: var(--border-2); transform: translateY(-2px); }
-.feature .icon {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25));
-  border: 1px solid rgba(99,102,241,0.35);
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 14px;
-  font-size: 18px;
-}
-.feature h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--fg); }
-.feature p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+/* Selection */
+::selection { background: var(--phosphor); color: #000; }
 
-.steps {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px; margin-top: 28px;
-  counter-reset: step;
-}
-.step {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 22px;
-  position: relative;
-}
-.step::before {
-  counter-increment: step;
-  content: counter(step);
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: white; font-weight: 700; font-size: 13px;
-  margin-bottom: 12px;
-}
-.step h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
-.step p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+/* Utility */
+.container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+.divider { border: none; height: 1px; background: var(--line); margin: 0; }
+.divider-dashed { border: none; border-top: 1px dashed var(--line-hi); }
 
-.stack {
-  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px;
+/* Brand logo */
+.claw-logo {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700; font-size: 13px;
+  letter-spacing: 0.1em; color: var(--ink);
+  text-transform: uppercase; text-decoration: none;
 }
-.stack span {
-  padding: 6px 12px; border: 1px solid var(--border-2); border-radius: 999px;
-  font-size: 12px; color: var(--fg-dim); background: var(--card);
+.claw-logo .mark {
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  background: var(--phosphor); color: #041008;
+  border-radius: 3px; font-weight: 900; font-size: 13px;
+  box-shadow: 0 0 12px -2px var(--phosphor);
+}
+
+/* Global nav */
+.gnav {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(16px);
+  background: rgba(5,7,10,0.72);
+  border-bottom: 1px solid var(--line);
+}
+.gnav-inner {
+  display: flex; align-items: center; gap: 28px; height: 56px;
+}
+.gnav-links {
+  display: flex; gap: 22px;
+  font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.gnav-links a { color: var(--ink-dim); position: relative; padding: 4px 0; }
+.gnav-links a.active, .gnav-links a:hover { color: var(--phosphor); }
+.gnav-links a.active::after {
+  content: ''; position: absolute;
+  left: 0; right: 0; bottom: -19px; height: 1px;
+  background: var(--phosphor); box-shadow: 0 0 8px var(--phosphor);
+}
+.gnav-right {
+  margin-left: auto; display: flex; align-items: center;
+  gap: 16px; font-size: 12px; color: var(--ink-faint);
+}
+
+/* Code block */
+.code {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg-1); border: 1px solid var(--line);
+  border-radius: var(--r-s); padding: 16px 18px;
+  font-size: 12.5px; line-height: 1.7; color: var(--ink);
+  white-space: pre; overflow-x: auto;
+}
+.code .kw { color: var(--cyan); }
+.code .str { color: var(--phosphor); }
+.code .cm { color: var(--ink-faint); font-style: italic; }
+.code .nm { color: var(--amber); }
+
+/* Flash-in animation */
+@keyframes flash-in {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: none; }
+}
+.flash-in { animation: flash-in 0.24s ease-out both; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td, th { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+tbody tr:last-child td { border-bottom: none; }
+th {
+  font-size: 10px; color: var(--ink-faint); text-transform: uppercase;
+  letter-spacing: 0.1em; font-weight: 500; background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+}
+tbody tr:hover { background: rgba(120,255,170,0.02); }
+
+/* Error */
+.err-msg {
+  color: var(--red); font-size: 13px; margin-top: 14px;
+  padding: 10px 12px; background: rgba(220,60,60,0.1);
+  border: 1px solid rgba(220,60,60,0.25); border-radius: var(--r-s);
+}
+
+/* Pre / logs */
+pre {
+  background: #070a0d;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: 14px 18px; overflow: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px; line-height: 1.7;
+  color: #8fb096; margin: 0; max-height: 360px;
+  white-space: pre-wrap;
+}
+
+/* Footer */
+.foot {
+  border-top: 1px solid var(--line); padding: 64px 0 32px;
+  position: relative; z-index: 2;
+}
+.foot-top { display: grid; grid-template-columns: 1fr 1.4fr; gap: 60px; }
+.foot-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
+.foot-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.foot-list a { color: var(--ink-dim); font-size: 13px; }
+.foot-list a:hover { color: var(--phosphor); }
+.foot-bot {
+  margin-top: 48px; padding-top: 20px;
+  border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--ink-faint);
+}
+@media (max-width: 800px) { .foot-top { grid-template-columns: 1fr; } .foot-cols { grid-template-columns: repeat(2, 1fr); } }
+
+/* ======== LANDING SPECIFIC ======== */
+.hero { padding: 56px 0 96px; position: relative; z-index: 2; }
+.hero-inner { display: grid; grid-template-columns: 1fr 440px; gap: 80px; align-items: start; }
+.hero-title {
+  font-family: 'Inter Tight', sans-serif;
+  font-weight: 800; font-size: clamp(56px, 7vw, 88px);
+  line-height: 0.94; letter-spacing: -0.035em;
+  margin: 0 0 28px; color: #f5faf4;
+}
+.hero-hl {
+  background: linear-gradient(180deg, var(--phosphor) 0%, oklch(0.7 0.18 145) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; text-shadow: 0 0 40px rgba(120,255,170,0.15);
+}
+.hero-sub { font-size: 18px; line-height: 1.55; color: var(--ink-dim); max-width: 540px; margin: 0 0 36px; }
+.hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 64px; }
+.hero-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--line);
+  background: rgba(10,13,18,0.6); backdrop-filter: blur(4px);
+}
+.hs-cell { padding: 18px 20px; border-right: 1px dashed var(--line); }
+.hs-cell:last-child { border-right: none; }
+.hs-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px; font-weight: 600; color: #f5faf4;
+  margin: 6px 0 4px; letter-spacing: -0.02em;
+}
+.hs-delta { font-size: 11px; color: var(--ink-faint); }
+.hero-right { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.hero-right-label { display: flex; justify-content: space-between; align-items: center; width: 380px; }
+.hero-right-caption { width: 380px; font-size: 12.5px; line-height: 1.55; }
+@media (max-width: 1024px) {
+  .hero-inner { grid-template-columns: 1fr; }
+  .hero-stats { grid-template-columns: repeat(2, 1fr); }
+  .hs-cell:nth-child(2) { border-right: none; }
+  .hs-cell:nth-child(1), .hs-cell:nth-child(2) { border-bottom: 1px dashed var(--line); }
+  .hero-right-label, .hero-right-caption { width: 100%; max-width: 380px; }
+}
+
+/* Architecture */
+.arch { padding: 96px 0; position: relative; z-index: 2; }
+.section-head { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-bottom: 48px; align-items: end; }
+.section-title {
+  font-family: 'Inter Tight', sans-serif;
+  font-size: clamp(36px, 4vw, 52px); font-weight: 700;
+  line-height: 1.02; letter-spacing: -0.03em;
+  color: #f5faf4; margin: 8px 0 0;
+}
+.section-lede { font-size: 15px; line-height: 1.6; margin: 0; max-width: 520px; }
+.arch-diagram { padding: 48px 40px; }
+.arch-row { display: flex; align-items: center; justify-content: space-between; }
+.arch-node {
+  flex: 0 0 auto; width: 150px; padding: 20px 16px;
+  border: 1px solid var(--line); background: var(--bg-1);
+  border-radius: 4px; text-align: center; transition: all 0.3s;
+}
+.arch-node.on {
+  border-color: var(--phosphor);
+  background: rgba(120,255,170,0.06);
+  box-shadow: 0 0 30px -8px rgba(120,255,170,0.4);
+}
+.arch-node-icon {
+  width: 40px; height: 40px;
+  border: 1px solid var(--line-hi); border-radius: 50%;
+  display: grid; place-items: center;
+  margin: 0 auto 12px; color: var(--ink-dim); transition: all 0.3s;
+}
+.arch-node.on .arch-node-icon { border-color: var(--phosphor); color: var(--phosphor); box-shadow: 0 0 20px -4px var(--phosphor); }
+.arch-node-label { font-weight: 600; font-size: 13px; color: #e9efe8; }
+.arch-node-sub { font-size: 10.5px; color: var(--ink-faint); margin-top: 4px; letter-spacing: 0.04em; }
+.arch-edge { flex: 1; position: relative; height: 2px; margin: 0 8px; }
+.arch-edge-line { position: absolute; top: 0; left: 0; right: 0; height: 1px; background: var(--line-hi); overflow: hidden; }
+.arch-edge-line::before {
+  content: ''; position: absolute; left: -30%; top: -1px;
+  width: 30%; height: 3px;
+  background: linear-gradient(to right, transparent, var(--phosphor), transparent);
+  opacity: 0; transition: opacity 0.2s;
+}
+.arch-edge-line.on::before { opacity: 1; animation: arch-flow 2s linear infinite; }
+@keyframes arch-flow { 0% { left: -30%; } 100% { left: 100%; } }
+.arch-edge-label {
+  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; color: var(--ink-faint); letter-spacing: 0.1em; text-transform: uppercase;
+}
+.arch-details {
+  margin-top: 40px; display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px dashed var(--line); padding-top: 24px; gap: 24px;
+}
+@media (max-width: 900px) {
+  .section-head { grid-template-columns: 1fr; }
+  .arch-row { flex-direction: column; gap: 16px; }
+  .arch-edge { width: 100%; }
+  .arch-details { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Security */
+.sec { padding: 96px 0; position: relative; z-index: 2; }
+.sec-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--line); border: 1px solid var(--line);
+}
+.sec-card { padding: 28px 24px; background: var(--bg); border: none !important; border-radius: 0 !important; }
+.sec-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.sec-card-icon {
+  width: 36px; height: 36px;
+  border: 1px solid var(--line-hi); display: grid; place-items: center;
+  color: var(--phosphor); border-radius: 3px;
+}
+.sec-card-title { font-size: 17px; font-weight: 600; color: #f5faf4; margin-bottom: 8px; }
+.sec-card-desc { font-size: 13.5px; line-height: 1.55; }
+@media (max-width: 900px) { .sec-grid { grid-template-columns: 1fr; } }
+
+/* Install */
+.install { padding: 48px 0; position: relative; z-index: 2; }
+.install-wrap { display: grid; grid-template-columns: 1fr 1.1fr; gap: 60px; padding: 56px; }
+.terminal { background: #070a0d; border: 1px solid var(--line-hi); border-radius: 6px; overflow: hidden; box-shadow: 0 20px 60px -20px rgba(0,0,0,0.6); }
+.terminal-top { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: #0d1217; border-bottom: 1px solid var(--line); }
+.tt-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.tt-dot.r { background: #ff5f56; } .tt-dot.y { background: #ffbd2e; } .tt-dot.g { background: #27c93f; }
+.tt-copy {
+  margin-left: auto; background: transparent;
+  border: 1px solid var(--line-hi); color: var(--ink-dim);
+  font-family: inherit; font-size: 10.5px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 9px; display: inline-flex; align-items: center; gap: 4px;
+  cursor: pointer; border-radius: 2px;
+}
+.tt-copy:hover { color: var(--phosphor); border-color: var(--phosphor); }
+.terminal-body {
+  margin: 0; padding: 20px 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px; line-height: 1.7;
+  color: #cfe2cf; white-space: pre-wrap;
+}
+.terminal-body .cm { color: #5a6a62; }
+.terminal-body .tp { color: var(--phosphor); font-weight: 600; }
+.terminal-body .ok { color: var(--phosphor); }
+.terminal-body .str { color: var(--cyan); }
+@media (max-width: 900px) { .install-wrap { grid-template-columns: 1fr; padding: 32px; } }
+
+/* Roadmap */
+.roadmap { padding: 96px 0; position: relative; z-index: 2; }
+.rm-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; }
+.rm-timeline { display: flex; flex-direction: column; }
+.rm-entry { display: grid; grid-template-columns: 28px 1fr; gap: 16px; padding: 20px 0; border-bottom: 1px dashed var(--line); }
+.rm-entry:last-child { border-bottom: none; }
+.rm-bullet { display: grid; place-items: center; padding-top: 6px; position: relative; }
+.rm-bullet::before {
+  content: ''; position: absolute; top: 24px; bottom: -20px;
+  width: 1px; background: var(--line); left: 13px;
+}
+.rm-entry:last-child .rm-bullet::before { display: none; }
+.rm-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.rm-ver { font-weight: 700; font-size: 14px; color: #f5faf4; font-family: 'JetBrains Mono', monospace; }
+.rm-notes { margin: 0; padding: 0 0 0 14px; font-size: 13px; color: var(--ink-dim); line-height: 1.7; }
+.rm-notes li::marker { color: var(--phosphor); }
+.rm-oss { padding: 28px 24px; align-self: start; }
+.rm-oss-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 12px; }
+.rm-stat-v { font-family: 'JetBrains Mono', monospace; font-size: 24px; color: #f5faf4; font-weight: 600; }
+.rm-activity { display: grid; grid-template-columns: repeat(26, 1fr); grid-auto-rows: 1fr; gap: 2px; aspect-ratio: 13 / 1; }
+.rm-act-cell { aspect-ratio: 1; border-radius: 1px; }
+@media (max-width: 900px) { .rm-grid { grid-template-columns: 1fr; } }
+
+/* FAQ */
+.faq { padding: 96px 0; position: relative; z-index: 2; }
+.faq-list { border-top: 1px solid var(--line); }
+.faq-item {
+  width: 100%; display: block; text-align: left;
+  background: transparent; border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 0; color: inherit; font: inherit; cursor: pointer;
+}
+.faq-head { display: flex; align-items: center; gap: 20px; padding: 22px 4px; }
+.faq-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--phosphor); letter-spacing: 0.1em; }
+.faq-q { font-family: 'Inter Tight', sans-serif; font-size: 20px; font-weight: 500; color: #e9efe8; flex: 1; letter-spacing: -0.01em; }
+.faq-icon { font-size: 22px; color: var(--ink-dim); font-weight: 300; width: 20px; text-align: center; }
+.faq-item.open .faq-icon { color: var(--phosphor); }
+.faq-item:hover .faq-q { color: #f5faf4; }
+.faq-a {
+  padding: 0 4px 24px 52px;
+  font-family: 'Inter Tight', sans-serif;
+  font-size: 15px; line-height: 1.65;
+  color: var(--ink-dim); max-width: 780px;
+}
+
+/* Telegram demo */
+.tg-frame {
+  width: 380px; height: 560px;
+  background: #14181e; border: 1px solid var(--line-hi);
+  border-radius: 14px; display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.8), var(--glow);
+  font-family: 'Inter Tight', system-ui, sans-serif;
+}
+.tg-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; background: #1c232b;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.tg-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: #0c1013; display: grid; place-items: center;
+  border: 1px solid rgba(120,255,170,0.3);
+  color: var(--phosphor); font-weight: 900; font-size: 14px;
+}
+.tg-body {
+  flex: 1; padding: 14px 12px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+  background: radial-gradient(ellipse at 30% 20%, rgba(120,255,170,0.04), transparent 60%), #0e1216;
+}
+.tg-body::-webkit-scrollbar { width: 3px; }
+.tg-msg { display: flex; margin-bottom: 4px; }
+.tg-msg.me { justify-content: flex-end; }
+.tg-msg.bot { justify-content: flex-start; }
+.tg-bubble {
+  max-width: 82%; padding: 7px 11px 4px; border-radius: 12px;
+  font-size: 12.5px; line-height: 1.45; position: relative;
+}
+.tg-msg.me .tg-bubble { background: linear-gradient(180deg, #2d7a4a, #1f5934); color: #f3f9f2; border-bottom-right-radius: 4px; }
+.tg-msg.bot .tg-bubble { background: #1a2028; color: #d6dde0; border-bottom-left-radius: 4px; }
+.tg-text { white-space: pre-wrap; }
+.tg-time { font-size: 9.5px; color: rgba(255,255,255,0.4); text-align: right; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+.tg-bubble.typing { display: inline-flex; gap: 3px; padding: 10px 12px; }
+.tg-bubble.typing span { width: 5px; height: 5px; border-radius: 50%; background: #7c8b82; animation: tg-dots 1.3s infinite; }
+.tg-bubble.typing span:nth-child(2) { animation-delay: 0.15s; }
+.tg-bubble.typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes tg-dots { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+.tg-input {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: #1c232b;
+  border-top: 1px solid rgba(255,255,255,0.05); color: #7c8b82;
+}
+.tg-input-field { flex: 1; background: #0e1216; border-radius: 16px; padding: 8px 14px; font-size: 12px; }
+
+/* ======== CONSOLE SPECIFIC ======== */
+.console { padding: 32px 0 80px; position: relative; z-index: 2; min-height: 100vh; }
+.page-head {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-bottom: 32px; gap: 20px;
+}
+.page-title {
+  font-family: 'Inter Tight', sans-serif;
+  font-size: 36px; font-weight: 700;
+  letter-spacing: -0.025em; color: #f5faf4; margin: 0; line-height: 1;
+}
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+.tile {
+  background: var(--panel); border: 1px solid var(--line);
+  padding: 18px 20px; border-radius: var(--r-s);
+}
+.tile-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.tile-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 34px; font-weight: 500; letter-spacing: -0.02em;
+  color: #f5faf4; line-height: 1;
+}
+.tile-unit { font-size: 16px; color: var(--ink-faint); margin-left: 4px; }
+.tile-foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; }
+.sub-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+.sub-tile {
+  padding: 14px 16px; background: var(--bg-1);
+  border: 1px solid var(--line); border-radius: var(--r-s);
+}
+.sub-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #e9efe8; margin: 4px 0 3px; font-weight: 500; }
+.cons-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+.sessions {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r-s); overflow: hidden;
+}
+.panel-head {
+  padding: 14px 18px; display: flex; justify-content: space-between;
+  align-items: center; border-bottom: 1px solid var(--line);
+}
+.feed { max-height: 360px; overflow-y: auto; padding: 6px 0; }
+.feed-row {
+  display: grid; grid-template-columns: 70px 34px 70px 110px 1fr;
+  gap: 12px; padding: 7px 18px; font-size: 12px;
+  align-items: center; border-bottom: 1px dashed var(--line);
+}
+.feed-row:last-child { border-bottom: none; }
+.feed-row:hover { background: rgba(120,255,170,0.02); }
+.feed-t { font-family: 'JetBrains Mono', monospace; color: var(--ink-faint); font-size: 11px; }
+.feed-lvl { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 11px; text-align: center; padding: 2px 0; }
+.feed-inf { color: var(--cyan); }
+.feed-ok { color: var(--phosphor); }
+.feed-wrn { color: var(--amber); }
+.feed-err { color: var(--red); }
+.feed-tag { justify-self: start; font-size: 9.5px !important; }
+.tag-bash { color: var(--phosphor); border-color: rgba(120,255,170,0.3); }
+.tag-edit { color: var(--amber); border-color: rgba(255,180,70,0.3); }
+.tag-read { color: var(--cyan); border-color: rgba(130,210,255,0.3); }
+.feed-from { color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; }
+.feed-text { font-size: 12.5px; color: var(--ink); }
+.logtail {
+  margin: 0; padding: 14px 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px; line-height: 1.7;
+  color: #8fb096; white-space: pre-wrap; overflow-x: auto;
+  max-height: 300px;
+}
+.log-t { color: #4a6658; }
+.log-inf { color: var(--cyan); font-weight: 600; }
+.log-ok { color: var(--phosphor); font-weight: 600; }
+.log-wrn { color: var(--amber); font-weight: 600; }
+.rail { display: flex; flex-direction: column; gap: 12px; }
+.rail-card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r-s); padding: 16px;
+}
+.op-list { display: flex; flex-direction: column; gap: 10px; margin: 10px 0 4px; }
+.op-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.op-av {
+  width: 28px; height: 28px; border-radius: 3px;
+  display: grid; place-items: center;
+  background: var(--bg-1); border: 1px solid var(--line-hi);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px; font-weight: 700; color: var(--phosphor);
+}
+.ws-bar { height: 4px; background: var(--bg-1); border-radius: 2px; overflow: hidden; margin-top: 12px; }
+.ws-fill { height: 100%; background: var(--phosphor); box-shadow: 0 0 8px var(--phosphor); }
+.ws-files { display: flex; flex-direction: column; gap: 8px; }
+.ws-file { display: flex; align-items: center; gap: 8px; color: var(--ink-dim); }
+.ws-file:hover { color: var(--phosphor); cursor: pointer; }
+.qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qa {
+  padding: 10px 12px; background: var(--bg-1);
+  border: 1px solid var(--line); color: var(--ink-dim);
+  font-family: inherit; font-size: 11px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  text-align: left; cursor: pointer; border-radius: var(--r-s);
+  display: flex; align-items: center; gap: 6px; transition: all 0.1s;
+}
+.qa:hover { color: var(--phosphor); border-color: var(--phosphor); background: var(--phosphor-wash); }
+
+/* Login page */
+.login-wrap { min-height: 100vh; display: grid; place-items: center; position: relative; z-index: 2; }
+
+/* Direction indicators for events */
+.dir-in { color: var(--cyan); font-weight: 600; }
+.dir-out { color: var(--phosphor); font-weight: 600; }
+.dir-error { color: var(--red); font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .stat-row, .sub-row { grid-template-columns: repeat(2, 1fr); }
+  .cons-grid { grid-template-columns: 1fr; }
 }
 `
 
-// The public landing page is intentionally generic — no uptime, no model,
-// no bot name, no user counts. Attackers probing the domain should learn
-// nothing about what's running here or how many users it has.
 const publicHTML = `<!doctype html>
 <html lang=en><head>
 <meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
-<title>openclaw — self-hosted AI coding agent platform</title>
+<title>openclaw · self-hosted agent orchestration</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/favicon.svg">
-<meta name="theme-color" content="#0a0c10">
-<meta name="description" content="Your private Claude Code agent — accessible from Telegram, web, API, and GitHub webhooks. Self-hosted, open source, MIT licensed.">
-<style>{{.CSS}}
-/* ---- landing-specific overrides ---- */
-.showcase { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px; margin: 24px 0; }
-.showcase-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; margin-bottom: 14px; }
-.showcase pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; font-size: 13px; line-height: 1.7; color: var(--fg-dim); margin: 0; }
-.showcase pre .cmd { color: var(--ok); }
-.showcase pre .comment { color: var(--muted-2); }
-.showcase pre .output { color: var(--muted); }
-
-.channels { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 24px; }
-.channel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; text-align: center; transition: border-color 0.15s, transform 0.15s; }
-.channel:hover { border-color: var(--accent); transform: translateY(-3px); }
-.channel .ch-icon { font-size: 32px; margin-bottom: 10px; }
-.channel h3 { font-size: 16px; margin: 0 0 6px; }
-.channel p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5; }
-
-.diagram { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin: 24px 0; overflow-x: auto; }
-.diagram pre { margin: 0; font-size: 12px; line-height: 1.6; color: var(--fg-dim); white-space: pre; }
-.diagram .accent-text { color: var(--accent); }
-.diagram .ok-text { color: var(--ok); }
-.diagram .warn-text { color: var(--warn); }
-
-.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin: 32px 0; text-align: center; }
-.stat-block .stat-num { font-size: 36px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.stat-block .stat-lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
-
-.cmd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 16px; }
-.cmd-item { display: flex; gap: 10px; align-items: baseline; font-size: 13px; padding: 8px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
-.cmd-item code { color: var(--ok); white-space: nowrap; font-size: 12px; }
-.cmd-item span { color: var(--muted); }
-
-.security-layers { counter-reset: layer; }
-.sec-layer { display: flex; gap: 16px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--border); }
-.sec-layer:last-child { border-bottom: none; }
-.sec-layer::before { counter-increment: layer; content: counter(layer); font-size: 18px; font-weight: 800; color: var(--accent); width: 28px; text-align: center; flex-shrink: 0; }
-.sec-layer h4 { margin: 0 0 2px; font-size: 14px; color: var(--fg); }
-.sec-layer p { margin: 0; font-size: 13px; color: var(--muted); }
-
-.divider { height: 1px; background: var(--border); margin: 48px 0; }
-
-@media (max-width: 640px) {
-  .landing-hero h1 { font-size: 28px; }
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
-}
-</style>
+<meta name="theme-color" content="#05070a">
+<meta name="description" content="Self-hosted agent orchestration for teams who'd rather run Claude Code on their own metal. Spin up sandboxed sessions per operator, reach them from Telegram, keep every log on a box you own.">
+<style>{{.CSS}}</style>
 </head><body>
 
-<div class=landing>
-  <div class=landing-nav>
-    <div class=brand>
-      <div class=brand-mark>{{.Mark}}</div>
-      <div>openclaw</div>
+<!-- ====== NAV ====== -->
+<header class="gnav">
+  <div class="container gnav-inner">
+    <a href="/" class="claw-logo">
+      <span class="mark">&#x276F;</span>
+      <span>OPENCLAW</span>
+      <span style="color:var(--ink-faint);font-weight:400;margin-left:2px">v2026.4</span>
+    </a>
+    <nav class="gnav-links">
+      <a class="active" href="#product">Product</a>
+      <a href="#security">Security</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="https://github.com/anchoo2kewl/openclaw">Docs</a>
+    </nav>
+    <div class="gnav-right">
+      <a href="https://github.com/anchoo2kewl/openclaw" target="_blank" rel="noreferrer" class="btn btn-ghost" style="padding:4px 10px">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        github
+      </a>
+      <a href="/login" class="btn" style="padding:6px 12px">Sign in</a>
+      <a href="#install" class="btn btn-primary" style="padding:6px 12px">Install &#x2192;</a>
     </div>
-    <div class=spacer></div>
-    <a class="btn btn-ghost" href="https://github.com/anchoo2kewl/openclaw">GitHub</a>
-    <a class="btn btn-primary" href="/login" style="margin-left:8px">Sign in</a>
   </div>
+</header>
 
-  <!-- ====== HERO ====== -->
-  <section class=landing-hero>
-    <div class=eyebrow>Self-hosted · open source · MIT · 5,000+ lines of Go</div>
-    <h1>Your private <span>coding agent platform</span>,<br>reachable from anywhere.</h1>
-    <p class=tagline>
-      Clone repos, write code, create PRs, run tests on a schedule, orchestrate multi-agent workflows &mdash;
-      all from Telegram, a web chat, REST API, or GitHub webhooks. Self-hosted on your own VM.
-    </p>
-    <div class=cta>
-      <a class="btn btn-primary" href="/login">Sign in to your console</a>
-      <a class="btn btn-ghost" href="/chat">Open web chat</a>
-      <a class="btn btn-ghost" href="https://github.com/anchoo2kewl/openclaw">View on GitHub &rarr;</a>
+<!-- ====== HERO ====== -->
+<section class="hero" id="product">
+  <div class="container hero-inner">
+    <div class="hero-left">
+      <div class="kicker" style="margin-bottom:24px">
+        <span class="dot ok" style="margin-right:8px"></span> OPENCLAW · v2026.4 · <span id="hero-clock">00:00:00</span> UTC
+      </div>
+      <h1 class="hero-title prose">
+        Your operators.<br>
+        Your VM.<br>
+        <span class="hero-hl">One command away.</span>
+      </h1>
+      <p class="hero-sub prose">
+        Openclaw is self-hosted agent orchestration for teams who'd rather run Claude Code on their own
+        metal than hand over a shell. Spin up sandboxed sessions per operator, reach them from
+        Telegram, and keep every log on a box you own.
+      </p>
+      <div class="hero-cta">
+        <a href="#install" class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h12v10H2zM4 6l2 2-2 2M8 10h4"/></svg>
+          curl install
+        </a>
+        <a href="/login" class="btn">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v12l10-6z"/></svg>
+          View console demo
+        </a>
+        <a href="https://github.com/anchoo2kewl/openclaw" target="_blank" rel="noreferrer" class="btn btn-ghost">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span style="margin-left:4px">anchoo2kewl/openclaw</span>
+        </a>
+      </div>
+      <div class="hero-stats corner">
+        <div class="hs-cell">
+          <div class="eyebrow">sessions / day</div>
+          <div class="hs-num numeric">1,284</div>
+          <div class="hs-delta">+12.4% w/w</div>
+        </div>
+        <div class="hs-cell">
+          <div class="eyebrow">self-hosted nodes</div>
+          <div class="hs-num numeric">207</div>
+          <div class="hs-delta">across 14 orgs</div>
+        </div>
+        <div class="hs-cell">
+          <div class="eyebrow">avg p95 cold start</div>
+          <div class="hs-num numeric">1.8<span style="font-size:0.5em;color:var(--ink-dim)">s</span></div>
+          <div class="hs-delta">container warm pool</div>
+        </div>
+        <div class="hs-cell">
+          <div class="eyebrow">uptime · 90d</div>
+          <div class="hs-num numeric">99.97%</div>
+          <div class="hs-delta"><span class="dot ok"></span> all systems nominal</div>
+        </div>
+      </div>
     </div>
-  </section>
 
-  <!-- ====== BY THE NUMBERS ====== -->
-  <div class=stats-row>
-    <div class=stat-block><div class=stat-num>30+</div><div class=stat-lbl>Telegram commands</div></div>
-    <div class=stat-block><div class=stat-num>4</div><div class=stat-lbl>Access channels</div></div>
-    <div class=stat-block><div class=stat-num>3</div><div class=stat-lbl>AI agent strategies</div></div>
-    <div class=stat-block><div class=stat-num>5</div><div class=stat-lbl>Plugin catalog</div></div>
-    <div class=stat-block><div class=stat-num>7</div><div class=stat-lbl>Security layers</div></div>
+    <div class="hero-right">
+      <div class="hero-right-label">
+        <span class="kicker">LIVE · session #a7f3</span>
+        <span class="chip chip-green"><span class="dot ok pulse"></span> streaming</span>
+      </div>
+      <!-- Telegram demo -->
+      <div class="tg-frame" id="tg-demo">
+        <div class="tg-top">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="tg-avatar">&#x276F;</div>
+            <div>
+              <div style="font-weight:600;font-size:13px;color:#e9efe8">clawdy</div>
+              <div style="font-size:10.5px;color:#7c8b82;font-family:'JetBrains Mono'">
+                <span class="dot ok"></span> online · session #a7f3
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;color:#7c8b82">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13a6 6 0 1 1 0-12 6 6 0 0 1 0 12zM11 11l3 3"/></svg>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+          </div>
+        </div>
+        <div class="tg-body" id="tg-body"></div>
+        <div class="tg-input">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v10M3 8h10"/></svg>
+          <div class="tg-input-field">Message</div>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8l13-6-5 13-3-5-5-2z"/></svg>
+        </div>
+      </div>
+      <div class="hero-right-caption prose ink-dim">
+        This is a real session running on a single 4-CPU VM.
+        <br>Every bubble above is a Claude Code tool-call.
+      </div>
+    </div>
   </div>
+</section>
 
-  <div class=divider></div>
+<hr class="divider">
 
-  <!-- ====== 4 CHANNELS ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>ACCESS ANYWHERE</div>
-    <h2 class=big>Four ways to talk to your agent.</h2>
-    <p class=lede>Whether you're on your phone, at your desk, or in a CI pipeline &mdash; your coding agent is always one message away.</p>
-
-    <div class=channels>
-      <div class=channel>
-        <div class=ch-icon>&#x1F4F1;</div>
-        <h3>Telegram</h3>
-        <p>30+ commands. Clone repos, manage projects, send files, schedule tasks &mdash; all from your phone.</p>
+<!-- ====== ARCHITECTURE ====== -->
+<section class="arch" id="topology">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">&#xA7;02 · TOPOLOGY</div>
+        <h2 class="section-title prose">One VM. Zero vendor lock-in.</h2>
       </div>
-      <div class=channel>
-        <div class=ch-icon>&#x1F4BB;</div>
-        <h3>Web Chat</h3>
-        <p>Full browser-based chat UI at <code>/chat</code>. Dark theme, mobile-friendly, typing indicators.</p>
-      </div>
-      <div class=channel>
-        <div class=ch-icon>&#x1F517;</div>
-        <h3>REST API</h3>
-        <p>Trigger async Claude runs from scripts or CI. Submit jobs, poll results, integrate anywhere.</p>
-      </div>
-      <div class=channel>
-        <div class=ch-icon>&#x1F419;</div>
-        <h3>GitHub Webhooks</h3>
-        <p>Auto-review PRs, triage new issues, summarize pushes. Claude reacts to your repo in real time.</p>
-      </div>
-    </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== GIT & WORKSPACES ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>GIT-NATIVE WORKSPACES</div>
-    <h2 class=big>Clone, code, commit, PR &mdash; without leaving chat.</h2>
-    <p class=lede>Full git integration built in. Clone any GitHub repo, let Claude work on it, then ship a PR with one command.</p>
-
-    <div class=showcase>
-      <div class=showcase-title>Workflow example</div>
-      <pre><span class=cmd>/project api-refactor</span>         <span class=comment># create isolated project</span>
-<span class=cmd>/clone myorg/backend</span>           <span class=comment># clone repo into workspace</span>
-<span class=output>Cloned myorg/backend</span>
-
-<span class=output>You: refactor the auth module to use JWT</span>
-<span class=output>Claude: I'll update auth.go to use...</span>
-
-<span class=cmd>/git diff</span>                       <span class=comment># review changes</span>
-<span class=cmd>/pr Refactor auth to JWT</span>        <span class=comment># commit, push, create PR</span>
-<span class=output>https://github.com/myorg/backend/pull/42</span></pre>
+      <p class="section-lede prose ink-dim">
+        Telegram long-polls your bot. Your bot shells into an ephemeral Claude Code
+        container. Nginx never sees inbound traffic for the bot path &mdash; it's just there
+        for health. Everything lives in a bind mount you control.
+      </p>
     </div>
 
-    <div class=features-grid>
-      <div class=feature>
-        <div class=icon>&#x1F4C2;</div>
-        <h3>Named projects</h3>
-        <p>Isolate work into named projects. Each gets its own directory and Claude session. Switch instantly.</p>
+    <div class="arch-diagram panel corner">
+      <div class="arch-row" id="arch-row">
+        <div class="arch-node on" data-idx="0">
+          <div class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8l13-6-5 13-3-5-5-2z"/></svg></div>
+          <div class="arch-node-label">Telegram</div>
+          <div class="arch-node-sub">HTTPS long-poll</div>
+        </div>
+        <div class="arch-edge"><div class="arch-edge-line on"></div><div class="arch-edge-label">https</div></div>
+        <div class="arch-node" data-idx="1">
+          <div class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1l6 2v4c0 4-2.5 7-6 8-3.5-1-6-4-6-8V3l6-2z"/></svg></div>
+          <div class="arch-node-label">Bot</div>
+          <div class="arch-node-sub">python · allowlist</div>
+        </div>
+        <div class="arch-edge"><div class="arch-edge-line"></div><div class="arch-edge-label">exec</div></div>
+        <div class="arch-node" data-idx="2">
+          <div class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h12v10H2zM4 6l2 2-2 2M8 10h4"/></svg></div>
+          <div class="arch-node-label">Claude Code</div>
+          <div class="arch-node-sub">docker · /workspace</div>
+        </div>
+        <div class="arch-edge"><div class="arch-edge-line"></div><div class="arch-edge-label">bind</div></div>
+        <div class="arch-node" data-idx="3">
+          <div class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2h12v5H2zM2 9h12v5H2zM5 5h.01M5 12h.01"/></svg></div>
+          <div class="arch-node-label">Your VM</div>
+          <div class="arch-node-sub">nginx · cloudflare</div>
+        </div>
       </div>
-      <div class=feature>
-        <div class=icon>&#x1F500;</div>
-        <h3>Full git workflow</h3>
-        <p><code>/clone</code>, <code>/git status</code>, <code>/git diff</code>, <code>/git branch</code>, <code>/git log</code> &mdash; all built in.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F680;</div>
-        <h3>One-command PRs</h3>
-        <p><code>/pr Fix the bug</code> &mdash; stages all changes, pushes a branch, opens a GitHub PR, returns the link.</p>
-      </div>
-    </div>
-  </section>
 
-  <div class=divider></div>
-
-  <!-- ====== FILE TRANSFER ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>FILE TRANSFER</div>
-    <h2 class=big>Send files in, get files out.</h2>
-    <p class=lede>Drop a file or photo into the Telegram chat to save it to your workspace. Use <code>/download</code> to retrieve anything Claude created.</p>
-
-    <div class=features-grid>
-      <div class=feature>
-        <div class=icon>&#x1F4E5;</div>
-        <h3>Upload anything</h3>
-        <p>Send documents, photos, configs, data files. They land in your workspace with the original filename.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F4E4;</div>
-        <h3>Download results</h3>
-        <p><code>/download report.pdf</code> sends it right back to your Telegram chat. Path traversal protection built in.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F4AC;</div>
-        <h3>Caption context</h3>
-        <p>Add a caption when uploading a file &mdash; it's forwarded to Claude as context about what the file is.</p>
+      <div class="arch-details">
+        <div><div class="eyebrow">outbound only</div><div class="ink-dim" style="font-size:12px;margin-top:4px">No inbound port needed for the bot itself.</div></div>
+        <div><div class="eyebrow">UFW · 22/80/443</div><div class="ink-dim" style="font-size:12px;margin-top:4px">Fail2ban on sshd, CF-proxied DNS.</div></div>
+        <div><div class="eyebrow">workspace volume</div><div class="ink-dim" style="font-size:12px;margin-top:4px">/opt/openclaw/workspace, host-owned.</div></div>
+        <div><div class="eyebrow">secrets · mode 600</div><div class="ink-dim" style="font-size:12px;margin-top:4px">Never in the repo. Never in the image.</div></div>
       </div>
     </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== SCHEDULING ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>SCHEDULED AUTOMATION</div>
-    <h2 class=big>Set it and forget it.</h2>
-    <p class=lede>Schedule recurring Claude tasks that run on a cron. Results are sent straight to your Telegram.</p>
-
-    <div class=showcase>
-      <div class=showcase-title>Cron examples</div>
-      <pre><span class=cmd>/schedule 09:00 pull latest and run test suite, report failures</span>
-<span class=output>Job #1 scheduled (09:00): pull latest and run...</span>
-
-<span class=cmd>/schedule */30 check git status, alert if uncommitted changes</span>
-<span class=output>Job #2 scheduled (*/30): check git status...</span>
-
-<span class=cmd>/jobs</span>
-<span class=output>#1 [09:00] pull latest and run test suite, report failures</span>
-<span class=output>#2 [*/30] check git status, alert if uncommitted changes</span></pre>
-    </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== MULTI-AGENT ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>MULTI-AGENT ORCHESTRATION</div>
-    <h2 class=big>Three agents. One task. Parallel execution.</h2>
-    <p class=lede>Fan out a task across specialized AI agents that work simultaneously, then merge their results into a single report.</p>
-
-    <div class=diagram>
-      <pre>
-  <span class=accent-text>User Task</span>
-       |
-       v
-  <span class=warn-text>[Strategy Selector]</span>
-    /     |     \            <span class=comment>   fan-out (parallel)</span>
-   v      v      v
-<span class=ok-text>[Agent 1]</span> <span class=ok-text>[Agent 2]</span> <span class=ok-text>[Agent 3]</span>   <span class=comment>  each has own Claude session</span>
-   \      |      /
-    v     v     v            <span class=comment>   fan-in (collect)</span>
-  <span class=accent-text>[Merge &amp; Format]</span>
-       |
-       v
-  <span class=accent-text>Combined Report</span></pre>
-    </div>
-
-    <div class=features-grid>
-      <div class=feature>
-        <div class=icon>&#x1F50D;</div>
-        <h3>Review strategy</h3>
-        <p>Analyzer + Tester + Reviewer. Three angles on your code: structure, edge cases, and quality.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F528;</div>
-        <h3>Implement strategy</h3>
-        <p>Planner + Coder + Verifier. Get a plan, working code, and test coverage in one shot.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F41E;</div>
-        <h3>Debug strategy</h3>
-        <p>Investigator + Hypothesizer + Fixer. Root cause, possible explanations, and a concrete fix.</p>
-      </div>
-    </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== PLUGINS & TOOLS ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>EXTENSIBLE</div>
-    <h2 class=big>Plugins and MCP tools.</h2>
-    <p class=lede>Give Claude access to GitHub, web search, databases, browser automation, and more &mdash; via the Model Context Protocol.</p>
-
-    <div class=features-grid>
-      <div class=feature>
-        <div class=icon>&#x1F419;</div>
-        <h3>GitHub</h3>
-        <p>Issues, PRs, repos, code search &mdash; Claude can interact with GitHub directly via <code>gh mcp</code>.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F310;</div>
-        <h3>Web Fetch</h3>
-        <p>HTTP requests, API calls, web scraping. Claude reaches out to the internet when needed.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F4BE;</div>
-        <h3>SQLite</h3>
-        <p>Query and manage SQLite databases directly from Claude. Great for data analysis tasks.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F9E0;</div>
-        <h3>Memory</h3>
-        <p>Persistent memory across sessions. Claude remembers facts and context you tell it to store.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F310;</div>
-        <h3>Brave Search</h3>
-        <p>Web search via Brave API. Claude can look things up when it doesn't know the answer.</p>
-      </div>
-      <div class=feature>
-        <div class=icon>&#x1F9E9;</div>
-        <h3>Custom plugins</h3>
-        <p><code>/plugin custom name npx -y @scope/mcp</code> &mdash; install any MCP server as a plugin.</p>
-      </div>
-    </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== API SHOWCASE ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>DEVELOPER API</div>
-    <h2 class=big>Automate everything.</h2>
-    <p class=lede>Trigger Claude runs from CI pipelines, scripts, or GitHub webhooks. Every feature is API-accessible.</p>
-
-    <div class=showcase>
-      <div class=showcase-title>Async run API</div>
-      <pre><span class=comment># Submit an async Claude run</span>
-<span class=cmd>curl -X POST https://claw.biswas.me/api/run \</span>
-<span class=cmd>  -H "Authorization: Bearer $TOKEN" \</span>
-<span class=cmd>  -H "Content-Type: application/json" \</span>
-<span class=cmd>  -d '{"prompt": "review the latest PR for security issues"}'</span>
-
-<span class=output>{"id":"run_171...","status":"pending"}</span>
-
-<span class=comment># Poll for result</span>
-<span class=cmd>curl https://claw.biswas.me/api/run?id=run_171... \</span>
-<span class=cmd>  -H "Authorization: Bearer $TOKEN"</span>
-
-<span class=output>{"status":"done","result":"I found 2 issues..."}</span></pre>
-    </div>
-
-    <div class=showcase>
-      <div class=showcase-title>GitHub webhook auto-review</div>
-      <pre><span class=comment># Set up in GitHub repo settings:</span>
-<span class=output>Payload URL: https://claw.biswas.me/api/webhook/github</span>
-<span class=output>Events: Pull requests, Issues, Pushes</span>
-
-<span class=comment># When a PR is opened, Claude automatically:</span>
-<span class=output>- Reviews code for bugs and security issues</span>
-<span class=output>- Suggests improvements</span>
-<span class=output>- Reports back via the job API</span></pre>
-    </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== HISTORY & SEARCH ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>PERSISTENT MEMORY</div>
-    <h2 class=big>Every conversation, searchable.</h2>
-    <p class=lede>All conversations are persisted as JSON Lines files. Full-text search across your entire history. Survives restarts.</p>
-
-    <div class=showcase>
-      <div class=showcase-title>Search past conversations</div>
-      <pre><span class=cmd>/search authentication</span>
-<span class=output>Found 5 results for 'authentication':</span>
-<span class=output></span>
-<span class=output>Apr 18 14:20 &rarr; how does authentication work</span>
-<span class=output>Apr 18 14:21 &larr; Authentication uses PBKDF2-SHA256...</span>
-<span class=output>Apr 18 16:05 &rarr; fix the authentication bug in auth.go</span>
-<span class=output>Apr 18 16:08 &larr; I've updated auth.go to fix the...</span></pre>
-    </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== SECURITY ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>SECURITY</div>
-    <h2 class=big>Seven layers of defense.</h2>
-    <p class=lede>Defense in depth from the edge to the container. Every layer is independent.</p>
-
-    <div class=security-layers>
-      <div class=sec-layer><div><h4>Cloudflare</h4><p>DDoS protection, SSL termination, WAF, proxied DNS</p></div></div>
-      <div class=sec-layer><div><h4>Nginx TLS</h4><p>Origin CA cert, loopback-only upstream, WebSocket support</p></div></div>
-      <div class=sec-layer><div><h4>Dashboard Auth</h4><p>PBKDF2-SHA256 (600k iterations), cookie sessions, timing-safe verification</p></div></div>
-      <div class=sec-layer><div><h4>Telegram Allowlist</h4><p>Numeric user ID whitelist, silent drop of unauthorized messages</p></div></div>
-      <div class=sec-layer><div><h4>API Auth</h4><p>Bearer token for REST API, HMAC-SHA256 for GitHub webhooks</p></div></div>
-      <div class=sec-layer><div><h4>Gateway Isolation</h4><p>Shared bearer token, no host port binding, separate env files</p></div></div>
-      <div class=sec-layer><div><h4>Container Sandbox</h4><p>Non-root users, Docker bridge network, scoped workspace volumes</p></div></div>
-    </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== COMMAND REFERENCE (SAMPLE) ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>30+ TELEGRAM COMMANDS</div>
-    <h2 class=big>Everything at your fingertips.</h2>
-
-    <div class=cmd-grid>
-      <div class=cmd-item><code>/clone owner/repo</code> <span>Clone a GitHub repo</span></div>
-      <div class=cmd-item><code>/pr Fix the bug</code> <span>Create a PR from changes</span></div>
-      <div class=cmd-item><code>/git diff</code> <span>Show uncommitted changes</span></div>
-      <div class=cmd-item><code>/project myapp</code> <span>Switch to a project</span></div>
-      <div class=cmd-item><code>/schedule 09:00 ...</code> <span>Daily scheduled task</span></div>
-      <div class=cmd-item><code>/orchestrate review ...</code> <span>Multi-agent review</span></div>
-      <div class=cmd-item><code>/plugin install memory</code> <span>Add a plugin</span></div>
-      <div class=cmd-item><code>/tool enable github</code> <span>Enable MCP tool</span></div>
-      <div class=cmd-item><code>/download file.py</code> <span>Get a file back</span></div>
-      <div class=cmd-item><code>/search auth</code> <span>Search chat history</span></div>
-      <div class=cmd-item><code>/history</code> <span>Recent conversations</span></div>
-      <div class=cmd-item><code>/files</code> <span>List workspace files</span></div>
-    </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== HOW IT WORKS ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>GETTING STARTED</div>
-    <h2 class=big>From zero to agent in three steps.</h2>
-
-    <div class=steps>
-      <div class=step>
-        <h3>Provision</h3>
-        <p>Run the Ansible playbook against any Ubuntu host. You get nginx, Docker, two containers, TLS, and a hardened firewall &mdash; all wired together.</p>
-      </div>
-      <div class=step>
-        <h3>Configure</h3>
-        <p>Run <code>finish-setup.sh</code> to set your Telegram token, Anthropic API key, and GitHub token. Provision dashboard accounts with <code>openclaw useradd</code>.</p>
-      </div>
-      <div class=step>
-        <h3>Use it</h3>
-        <p>Message your bot on Telegram, open the web chat, call the API, or set up GitHub webhooks. Your agent is ready.</p>
-      </div>
-    </div>
-  </section>
-
-  <div class=divider></div>
-
-  <!-- ====== UNDER THE HOOD ====== -->
-  <section class=section>
-    <div class=eyebrow-lbl>UNDER THE HOOD</div>
-    <h2 class=big>Boring, auditable, reproducible.</h2>
-    <p class=lede>5,115 lines of Go, 16 source files, two containers. No framework sprawl, no background magic.</p>
-
-    <div class=stack>
-      <span>Go 1.26</span>
-      <span>Claude Code CLI</span>
-      <span>Telegram Bot API</span>
-      <span>GitHub CLI</span>
-      <span>MCP Protocol</span>
-      <span>zerolog</span>
-      <span>PBKDF2-SHA256</span>
-      <span>nginx</span>
-      <span>Cloudflare</span>
-      <span>Docker Compose</span>
-      <span>Ansible</span>
-      <span>JSON Lines</span>
-    </div>
-  </section>
-
-  <div class=foot>
-    <div>self-hosted &middot; open source &middot; MIT</div>
-    <div><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></div>
   </div>
-</div>
+</section>
 
+<hr class="divider">
+
+<!-- ====== SECURITY ====== -->
+<section class="sec" id="security">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">&#xA7;03 · POSTURE</div>
+        <h2 class="section-title prose">Security that a paranoid SRE won't sigh at.</h2>
+      </div>
+      <p class="section-lede prose ink-dim">
+        Openclaw runs Claude Code in YOLO mode &mdash; on purpose. That's the whole value prop.
+        So the rest of the stack is hardened to compensate: no inbound surface for the agent,
+        container-per-session, everything on your box.
+      </p>
+    </div>
+    <div class="sec-grid">
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1l6 2v4c0 4-2.5 7-6 8-3.5-1-6-4-6-8V3l6-2z"/></svg></div><span class="eyebrow">CTRL · A01</span></div><div class="sec-card-title prose">Telegram allowlist</div><div class="sec-card-desc prose ink-dim">Numeric user IDs only. Rejects before exec. Zero public surface.</div></div>
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4l7 3 7-3M8 7v8M1 4l7-3 7 3v8l-7 3-7-3V4z"/></svg></div><span class="eyebrow">CTRL · A02</span></div><div class="sec-card-title prose">Docker sandbox</div><div class="sec-card-desc prose ink-dim">Every session runs in an ephemeral container. Workspace is the only mount.</div></div>
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6a3 3 0 1 0-2.83 3l1.33 1.33L10 9l-1 1 1 1-1 1 2 2 3-3-4.17-4.17c.1-.27.17-.54.17-.83z"/></svg></div><span class="eyebrow">CTRL · A03</span></div><div class="sec-card-title prose">Secrets · mode 600</div><div class="sec-card-desc prose ink-dim">/opt/openclaw/.env owned by root. Never committed, never baked into images.</div></div>
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a4 4 0 1 1 8 0v2M3 7h10v8H3z"/></svg></div><span class="eyebrow">CTRL · A04</span></div><div class="sec-card-title prose">Cloudflare origin CA</div><div class="sec-card-desc prose ink-dim">15-year origin cert. UFW allows 22/80/443 only. Fail2ban on sshd.</div></div>
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2h12v5H2zM2 9h12v5H2zM5 5h.01M5 12h.01"/></svg></div><span class="eyebrow">CTRL · A05</span></div><div class="sec-card-title prose">Your data, your box</div><div class="sec-card-desc prose ink-dim">Logs, workspace, conversation history &mdash; all on disk you own. No telemetry.</div></div>
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5zM8 10.5A2.5 2.5 0 1 0 8 5.5a2.5 2.5 0 0 0 0 5z"/></svg></div><span class="eyebrow">CTRL · A06</span></div><div class="sec-card-title prose">Audit trail</div><div class="sec-card-desc prose ink-dim">Every tool call is journaled. Stream to stdout, syslog, or your SIEM.</div></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ====== INSTALL ====== -->
+<section class="install" id="install">
+  <div class="container">
+    <div class="install-wrap panel-hi corner">
+      <div class="install-left">
+        <div class="kicker">&#xA7;04 · INSTALL</div>
+        <h2 class="section-title prose" style="margin-top:8px">One command. One VM. Five minutes.</h2>
+        <p class="prose ink-dim" style="font-size:15px;line-height:1.6;max-width:460px">
+          Bootstrap issues a Cloudflare origin cert, hardens the box via Ansible,
+          deploys the bot container, and wires up nginx. You bring a Telegram token and
+          your Anthropic key.
+        </p>
+        <div style="display:flex;gap:12px;margin-top:24px">
+          <a href="https://github.com/anchoo2kewl/openclaw" class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3a2 2 0 0 1 2-2h4v12H4a2 2 0 0 0-2 2V3zM14 3a2 2 0 0 0-2-2H8v12h4a2 2 0 0 1 2 2V3z"/></svg>
+            Read the docs
+          </a>
+          <a href="https://github.com/anchoo2kewl/openclaw" target="_blank" rel="noreferrer" class="btn">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+            <span style="margin-left:4px">Source</span>
+          </a>
+        </div>
+      </div>
+      <div class="install-right">
+        <div class="terminal">
+          <div class="terminal-top">
+            <span class="tt-dot r"></span><span class="tt-dot y"></span><span class="tt-dot g"></span>
+            <span style="margin-left:12px;font-size:11px;color:var(--ink-faint)">~/ops &mdash; zsh</span>
+            <button class="tt-copy" id="copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('curl -fsSL openclaw.dev/install.sh | bash');var b=this;b.textContent='copied';setTimeout(function(){b.textContent='copy'},1400)">copy</button>
+          </div>
+          <pre class="terminal-body"><span class="cm"># 1. bootstrap a fresh ubuntu 22.04 vm</span>
+<span class="tp">$</span> curl -fsSL openclaw.dev/install.sh | bash
+
+<span class="cm"># 2. paste your secrets when prompted</span>
+<span class="tp">?</span> TELEGRAM_BOT_TOKEN   <span class="str">********</span>
+<span class="tp">?</span> TELEGRAM_ALLOWED_IDS <span class="str">8417342395</span>
+<span class="tp">?</span> ANTHROPIC_API_KEY    <span class="str">sk-ant-********</span>
+
+<span class="ok">&#x2713;</span> CF dns record created
+<span class="ok">&#x2713;</span> origin cert issued (15yr)
+<span class="ok">&#x2713;</span> ansible playbook green (22 tasks)
+<span class="ok">&#x2713;</span> openclaw online on <span class="str">claw.biswas.me</span>
+
+<span class="cm"># DM @clawdy on telegram to begin.</span>
+<span class="tp">$</span> <span class="cursor"></span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ====== ROADMAP ====== -->
+<section class="roadmap" id="roadmap">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">&#xA7;05 · TRAJECTORY</div>
+        <h2 class="section-title prose">Shipping weekly. Public forever.</h2>
+      </div>
+      <p class="section-lede prose ink-dim">
+        Every release cuts from <span class="mono" style="color:var(--phosphor)">main</span>, tagged and signed.
+        The roadmap lives in the same repo as the code.
+      </p>
+    </div>
+    <div class="rm-grid">
+      <div class="rm-timeline">
+        <div class="rm-entry">
+          <div class="rm-bullet"><span class="dot ok pulse"></span></div>
+          <div>
+            <div class="rm-head"><span class="rm-ver">v2026.4.15</span><span class="chip chip-green">current</span><span class="ink-faint" style="margin-left:auto;font-size:11px">Apr 15, 2026</span></div>
+            <ul class="rm-notes"><li>Multi-operator allowlist</li><li>Activity ring buffer · 200 events</li><li>Origin CA auto-rotation</li></ul>
+          </div>
+        </div>
+        <div class="rm-entry">
+          <div class="rm-bullet"><span class="dot warn"></span></div>
+          <div>
+            <div class="rm-head"><span class="rm-ver">v2026.5.0</span><span class="chip chip-amber">next</span><span class="ink-faint" style="margin-left:auto;font-size:11px">May 2026</span></div>
+            <ul class="rm-notes"><li>Gateway SSO (OIDC)</li><li>Per-operator workspace quotas</li><li>Slack + Discord adapters</li></ul>
+          </div>
+        </div>
+        <div class="rm-entry">
+          <div class="rm-bullet"><span class="dot idle"></span></div>
+          <div>
+            <div class="rm-head"><span class="rm-ver">v2026.6.0</span><span class="chip">planned</span><span class="ink-faint" style="margin-left:auto;font-size:11px">Jun 2026</span></div>
+            <ul class="rm-notes"><li>Multi-VM fleet mode</li><li>Policy-as-code (OPA)</li><li>Managed-cloud beta</li></ul>
+          </div>
+        </div>
+        <div class="rm-entry">
+          <div class="rm-bullet"><span class="dot idle"></span></div>
+          <div>
+            <div class="rm-head"><span class="rm-ver">v2026.q4</span><span class="chip">planned</span><span class="ink-faint" style="margin-left:auto;font-size:11px">Q4 2026</span></div>
+            <ul class="rm-notes"><li>SOC 2 Type I</li><li>BYO-model runtime (vLLM, Ollama)</li><li>Audit export &#x2192; Splunk/Loki</li></ul>
+          </div>
+        </div>
+      </div>
+      <div class="rm-oss panel corner">
+        <div class="kicker" style="margin-bottom:16px">OSS · 90d</div>
+        <div class="rm-oss-grid">
+          <div class="rm-stat"><div class="rm-stat-v numeric">42</div><div class="eyebrow">weekly commits</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">17</div><div class="eyebrow">issues · open</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">213</div><div class="eyebrow">issues · closed</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">11</div><div class="eyebrow">contributors</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">+1.4k</div><div class="eyebrow">stars · 90d</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">86</div><div class="eyebrow">forks</div></div>
+        </div>
+        <hr class="divider-dashed" style="margin:20px 0">
+        <div class="rm-activity" id="rm-heatmap"></div>
+        <div class="eyebrow" style="margin-top:8px;text-align:right">commit density · last 52w</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ====== FAQ ====== -->
+<section class="faq" id="faq">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">&#xA7;06 · FAQ</div>
+        <h2 class="section-title prose">Things everyone asks.</h2>
+      </div>
+    </div>
+    <div class="faq-list" id="faq-list">
+      <button class="faq-item open" data-idx="0"><div class="faq-head"><span class="faq-num">01</span><span class="faq-q">Do I need a dedicated VM?</span><span class="faq-icon">&minus;</span></div><div class="faq-a flash-in">A 2-CPU / 4GB ubuntu box is plenty. The bot is tiny; Claude Code runs in a container spawned per session. A $6/mo VPS has handled 600+ sessions a day for our main deployment.</div></button>
+      <button class="faq-item" data-idx="1"><div class="faq-head"><span class="faq-num">02</span><span class="faq-q">Why Telegram?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Because it's outbound-only. No inbound webhook, no public port, no Cloudflare Zero Trust tunnel. Your bot long-polls api.telegram.org &mdash; that's the whole ingress story. Other adapters (Slack, Discord) are on the roadmap.</div></button>
+      <button class="faq-item" data-idx="2"><div class="faq-head"><span class="faq-num">03</span><span class="faq-q">Is 'YOLO mode' safe?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">No, and that's the point. --dangerously-skip-permissions means Claude runs any tool without asking. The compensations: every session is a fresh container, the allowlist pins who can invoke it, and the workspace is the only writable mount.</div></button>
+      <button class="faq-item" data-idx="3"><div class="faq-head"><span class="faq-num">04</span><span class="faq-q">Can I self-host on bare metal?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Yes. The Ansible role targets Ubuntu 22.04 LTS. We test on Hetzner, DigitalOcean, Tencent Cloud Lighthouse, and a ThinkCentre in a closet. There is no "cloud" requirement.</div></button>
+      <button class="faq-item" data-idx="4"><div class="faq-head"><span class="faq-num">05</span><span class="faq-q">What's the license?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">MIT. You can fork it, rebrand it, sell it, host it for your team. If you build something cool, open a PR &mdash; we love merging them.</div></button>
+      <button class="faq-item" data-idx="5"><div class="faq-head"><span class="faq-num">06</span><span class="faq-q">Is a managed cloud coming?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Yes, in beta Q3. Same code, we run the VM. Same price-performance as a $6 VPS, just without the ansible step. The self-hosted flavor stays free and first-class.</div></button>
+    </div>
+  </div>
+</section>
+
+<!-- ====== FOOTER ====== -->
+<footer class="foot">
+  <div class="container">
+    <div class="foot-top">
+      <div>
+        <div class="claw-logo" style="margin-bottom:16px">
+          <span class="mark">&#x276F;</span>
+          <span>OPENCLAW</span>
+        </div>
+        <div class="prose ink-dim" style="max-width:320px;font-size:13px;line-height:1.55">
+          Self-hosted agent orchestration. Telegram-driven Claude Code. Your VM, your rules.
+        </div>
+        <div style="margin-top:24px;display:flex;gap:8px">
+          <a class="btn" href="https://github.com/anchoo2kewl/openclaw" target="_blank" rel="noreferrer">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+            <span style="margin-left:4px">Star on GitHub</span>
+          </a>
+        </div>
+      </div>
+      <div class="foot-cols">
+        <div><div class="eyebrow" style="margin-bottom:12px">product</div><ul class="foot-list"><li><a href="#">Overview</a></li><li><a href="/login">Console</a></li><li><a href="#">Gateway</a></li><li><a href="#">Changelog</a></li></ul></div>
+        <div><div class="eyebrow" style="margin-bottom:12px">developers</div><ul class="foot-list"><li><a href="https://github.com/anchoo2kewl/openclaw">Docs</a></li><li><a href="#">API reference</a></li><li><a href="#">Ansible roles</a></li><li><a href="#security">Security</a></li></ul></div>
+        <div><div class="eyebrow" style="margin-bottom:12px">community</div><ul class="foot-list"><li><a href="https://github.com/anchoo2kewl/openclaw">GitHub</a></li><li><a href="#">Discord</a></li><li><a href="#">Twitter</a></li><li><a href="#">Contributing</a></li></ul></div>
+        <div><div class="eyebrow" style="margin-bottom:12px">legal</div><ul class="foot-list"><li><a href="#">MIT license</a></li><li><a href="#">Privacy</a></li><li><a href="#">Trademarks</a></li></ul></div>
+      </div>
+    </div>
+    <div class="foot-bot">
+      <span>&copy; 2026 openclaw · MIT · <span class="ink-faint">claw.biswas.me</span></span>
+      <span class="ink-faint">&#x22EF; this page served from a single 4-CPU VM in YYZ1 &#x22EF;</span>
+      <span><span class="dot ok"></span> all systems nominal</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Live clock
+setInterval(function(){
+  var d=new Date(),el=document.getElementById('hero-clock');
+  if(el)el.textContent=[d.getUTCHours(),d.getUTCMinutes(),d.getUTCSeconds()].map(function(v){return String(v).padStart(2,'0')}).join(':');
+},1000);
+
+// Architecture animation
+(function(){
+  var nodes=document.querySelectorAll('.arch-node'),edges=document.querySelectorAll('.arch-edge-line'),active=0;
+  setInterval(function(){
+    nodes.forEach(function(n){n.classList.remove('on')});
+    edges.forEach(function(e){e.classList.remove('on')});
+    active=(active+1)%4;
+    nodes[active].classList.add('on');
+    if(active>0)edges[active-1].classList.add('on');
+  },2000);
+})();
+
+// Telegram demo
+(function(){
+  var script=[
+    {side:'me',text:'tail the nginx error log on prod. find anything spiking in the last hour.',delay:0},
+    {side:'bot',typing:800,text:'Running on prod-01 via /workspace/ops \u2014 claude-sonnet-4-5, session #a7f3.',delay:500},
+    {side:'bot',text:'Found 2,104 new errors in 62m.\n\u2022 1,903\u00D7 upstream timeout from svc=payment-api\n\u2022 201\u00D7 502 from svc=search\nPayment-api stopped returning /healthz at 22:41.',delay:1600},
+    {side:'me',text:'roll back payment-api to v8.12.1. page no one.',delay:900},
+    {side:'bot',typing:1200,text:'Rolling back\u2026\n$ kubectl rollout undo deploy/payment-api --to-revision=41\ndeployment.apps/payment-api rolled back',delay:600},
+    {side:'bot',text:'\u2713 payment-api healthy in 22s. Error rate dropping: 1,903/m \u2192 12/m \u2192 0/m. Want a post-mortem stub committed to ops/incidents?',delay:1400},
+    {side:'me',text:'yes, assign to @a. link the grafana range.',delay:700}
+  ];
+  var body=document.getElementById('tg-body'),step=0;
+  function addMsg(m){
+    var d=document.createElement('div');d.className='tg-msg '+m.side+' flash-in';
+    var b=document.createElement('div');b.className='tg-bubble';
+    var t=document.createElement('div');t.className='tg-text';t.textContent=m.text;
+    var tm=document.createElement('div');tm.className='tg-time';
+    tm.innerHTML=(step%2===0?'22:41':'22:42')+(m.side==='me'?' <span style="color:#6fbfff">\u2713\u2713</span>':'');
+    b.appendChild(t);b.appendChild(tm);d.appendChild(b);body.appendChild(d);
+    body.scrollTop=body.scrollHeight;
+  }
+  function showTyping(){
+    var d=document.createElement('div');d.className='tg-msg bot flash-in';d.id='typing-ind';
+    var b=document.createElement('div');b.className='tg-bubble typing';
+    b.innerHTML='<span></span><span></span><span></span>';
+    d.appendChild(b);body.appendChild(d);body.scrollTop=body.scrollHeight;
+  }
+  function removeTyping(){var el=document.getElementById('typing-ind');if(el)el.remove();}
+  function next(){
+    if(step>=script.length){setTimeout(function(){body.innerHTML='';step=0;next();},5000);return;}
+    var m=script[step],total=(m.typing||0)+(m.delay||0)+(m.side==='bot'?600:400);
+    if(m.typing)showTyping();
+    setTimeout(function(){
+      removeTyping();addMsg(m);step++;next();
+    },total);
+  }
+  next();
+})();
+
+// FAQ accordion
+document.getElementById('faq-list').addEventListener('click',function(e){
+  var item=e.target.closest('.faq-item');if(!item)return;
+  var items=document.querySelectorAll('.faq-item');
+  var wasOpen=item.classList.contains('open');
+  items.forEach(function(it){
+    it.classList.remove('open');
+    var a=it.querySelector('.faq-a'),ic=it.querySelector('.faq-icon');
+    if(a)a.style.display='none';
+    if(ic)ic.textContent='+';
+  });
+  if(!wasOpen){
+    item.classList.add('open');
+    var a=item.querySelector('.faq-a'),ic=item.querySelector('.faq-icon');
+    if(a){a.style.display='block';a.classList.add('flash-in');}
+    if(ic)ic.textContent='\u2212';
+  }
+});
+
+// Heatmap
+(function(){
+  var hm=document.getElementById('rm-heatmap');if(!hm)return;
+  var colors=['#10181a','#1a3a2a','#2a6a4a','#4aaa6a','#7affbf'];
+  for(var i=0;i<52;i++){var c=document.createElement('div');c.className='rm-act-cell';c.style.background=colors[Math.floor(Math.random()*5)];hm.appendChild(c);}
+})();
+</script>
 </body></html>`
 
-// The authed dashboard is the operational view — everything sensitive lives
-// here and nowhere else.
 const dashboardHTML = `<!doctype html>
 <html lang=en><head>
 <meta charset=utf-8>
@@ -851,192 +1210,261 @@ const dashboardHTML = `<!doctype html>
 <title>openclaw · console</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/favicon.svg">
-<meta name="theme-color" content="#0a0c10">
+<meta name="theme-color" content="#05070a">
 <style>{{.CSS}}</style>
 </head><body>
 
-<nav class=nav>
-  <div class=nav-inner>
-    <div class=brand>
-      <div class=brand-mark>{{.Mark}}</div>
-      <div>openclaw</div>
-    </div>
-    <a class=tab href="/">Overview</a>
-    {{if .HasGateway}}<a class=tab href="/gateway-launch">Gateway ↗</a>{{end}}
-    <a class=tab href="#activity">Activity</a>
-    <a class=tab href="#accounts">Accounts</a>
-    <a class=tab href="#logs">Logs</a>
-    <div class=spacer></div>
-    <div class=who>
-      <span>● {{.Email}}</span>
-      <form method=POST action="/logout" style="margin:0">
-        <button class="btn btn-ghost" type=submit>Log out</button>
+<!-- ====== NAV ====== -->
+<header class="gnav">
+  <div class="container gnav-inner">
+    <a href="/" class="claw-logo">
+      <span class="mark">&#x276F;</span>
+      <span>OPENCLAW</span>
+      <span style="color:var(--ink-faint);font-weight:400;margin-left:2px">v2026.4</span>
+    </a>
+    <nav class="gnav-links">
+      <a class="active" href="/">Overview</a>
+      <a href="#activity">Activity</a>
+      <a href="#accounts">Accounts</a>
+      <a href="#logs">Logs</a>
+      {{if .HasGateway}}<a href="/gateway-launch">Gateway &#x2197;</a>{{end}}
+    </nav>
+    <div class="gnav-right">
+      <span><span class="dot ok"></span> {{.Email}}</span>
+      <form method="POST" action="/logout" style="margin:0">
+        <button class="btn btn-ghost" type="submit" style="padding:4px 10px">Log out</button>
       </form>
     </div>
   </div>
-</nav>
+</header>
 
-<main class=wrap>
+<div class="console">
+  <div class="container">
 
-  <div class=hero-row>
-    <div>
-      <div class=hero-title>Operator console</div>
-      <div class=hero-sub><span class=dot></span>online · uptime {{.Uptime}} · refreshes every 15s</div>
-    </div>
-    <div style="display:flex;gap:8px">
-      {{if .HasGateway}}<a class="btn btn-primary" href="/gateway-launch">Open gateway →</a>{{end}}
-    </div>
-  </div>
-
-  <!-- ---- stat cards ---- -->
-  <div class=stats>
-    <div class="card stat accent">
-      <div class=k>Active sessions</div>
-      <div class=v>{{len .Sessions}}</div>
-      <div class=hint>Telegram conversations currently held</div>
-    </div>
-    <div class="card stat">
-      <div class=k>Messages seen</div>
-      <div class=v>{{len .Events}}</div>
-      <div class=hint>Ring-buffered (last 200)</div>
-    </div>
-    <div class="card stat">
-      <div class=k>Operators</div>
-      <div class=v>{{len .Users}}</div>
-      <div class=hint>Dashboard accounts provisioned</div>
-    </div>
-    <div class="card stat">
-      <div class=k>Telegram allowlist</div>
-      <div class=v>{{len .Allowed}}</div>
-      <div class=hint>User ids allowed to DM the bot</div>
-    </div>
-  </div>
-
-  <!-- ---- configuration strip ---- -->
-  <div class=stats style="margin-top:12px">
-    <div class=card>
-      <div class=k style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Model</div>
-      <div style="font-size:14px;font-variant-numeric:tabular-nums;margin-top:4px">{{.Model}}</div>
-    </div>
-    <div class=card>
-      <div class=k style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Workspace</div>
-      <div style="font-size:14px;font-variant-numeric:tabular-nums;margin-top:4px;word-break:break-all"><code>{{.Workspace}}</code></div>
-    </div>
-    <div class=card>
-      <div class=k style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Allowed Telegram IDs</div>
-      <div style="font-size:14px;margin-top:4px;word-break:break-all">
-        {{if .Allowed}}{{range $i, $u := .Allowed}}{{if $i}}, {{end}}<code>{{$u}}</code>{{end}}{{else}}<span class=muted>(none)</span>{{end}}
+    <!-- ====== PAGE HEAD ====== -->
+    <div class="page-head">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span class="eyebrow">OPENCLAW · prod · yyz1</span>
+          <span class="chip chip-green"><span class="dot ok pulse"></span> online</span>
+          <span class="ink-faint" style="font-size:11px">uptime {{.Uptime}} · refresh every 15s</span>
+        </div>
+        <h1 class="page-title prose">Operator console</h1>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        {{if .HasGateway}}<a href="/gateway-launch" class="btn btn-primary">
+          Open gateway <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4v4M14 2L7 9M12 8v6H2V4h6"/></svg>
+        </a>{{end}}
       </div>
     </div>
-  </div>
 
-  <!-- ---- two-column: activity + sidebar ---- -->
-  <div class=cols>
-    <div>
-
-      <div id=activity class="card section-card" style="margin-top:4px">
-        <div class=hd>
-          <div class=lbl>Recent activity</div>
-          <div class=count>{{len .Events}} events</div>
-        </div>
-        <div class="body tight">
-          {{if .Events}}
-          <table>
-            <thead><tr><th style="width:80px">Time</th><th style="width:60px">Dir</th><th style="width:110px">User</th><th>Message</th></tr></thead>
-            <tbody>
-            {{range .Events}}<tr><td class=muted>{{fmtTime .Time}}</td><td class="dir-{{.Direction}}">{{.Direction}}</td><td><code>{{.UserID}}</code></td><td>{{.Text}}</td></tr>{{end}}
-            </tbody>
-          </table>
-          {{else}}
-          <div style="padding:18px;text-align:center" class=muted>No messages yet — ping <code>@clawdy</code> on Telegram to see events flow here.</div>
-          {{end}}
-        </div>
+    <!-- ====== STAT ROW ====== -->
+    <div class="stat-row">
+      <div class="tile corner">
+        <div class="tile-head"><span class="eyebrow">ACTIVE SESSIONS</span></div>
+        <div class="tile-num numeric">{{len .Sessions}}</div>
+        <div class="tile-foot"><span class="ink-faint" style="font-size:11px">Telegram conversations</span></div>
       </div>
+      <div class="tile corner">
+        <div class="tile-head"><span class="eyebrow">MESSAGES · LAST 200</span></div>
+        <div class="tile-num numeric">{{len .Events}}</div>
+        <div class="tile-foot"><span class="ink-faint" style="font-size:11px">ring-buffered events</span></div>
+      </div>
+      <div class="tile corner">
+        <div class="tile-head"><span class="eyebrow">OPERATORS</span></div>
+        <div class="tile-num numeric">{{len .Users}}</div>
+        <div class="tile-foot"><span class="ink-faint" style="font-size:11px">dashboard accounts</span></div>
+      </div>
+      <div class="tile corner">
+        <div class="tile-head"><span class="eyebrow">ALLOWLIST</span></div>
+        <div class="tile-num numeric">{{len .Allowed}}</div>
+        <div class="tile-foot"><span class="ink-faint" style="font-size:11px">Telegram IDs authorized</span></div>
+      </div>
+    </div>
 
-      <div class="card section-card" style="margin-top:16px">
-        <div class=hd>
-          <div class=lbl>Telegram sessions</div>
-          <div class=count>{{len .Sessions}} active</div>
-        </div>
-        <div class="body tight">
+    <!-- ====== SUB ROW ====== -->
+    <div class="sub-row">
+      <div class="sub-tile">
+        <span class="eyebrow">model</span>
+        <div class="sub-val mono">{{.Model}}</div>
+        <div class="ink-faint" style="font-size:11px">provider · anthropic · api v1</div>
+      </div>
+      <div class="sub-tile">
+        <span class="eyebrow">workspace</span>
+        <div class="sub-val mono" style="word-break:break-all">{{.Workspace}}</div>
+        <div class="ink-faint" style="font-size:11px">bind mount · host-owned</div>
+      </div>
+      <div class="sub-tile">
+        <span class="eyebrow">host</span>
+        <div class="sub-val mono">claw.biswas.me</div>
+        <div class="ink-faint" style="font-size:11px">ubuntu 22.04 · yyz1</div>
+      </div>
+      <div class="sub-tile">
+        <span class="eyebrow">allowed ids</span>
+        <div class="sub-val mono" style="word-break:break-all">{{if .Allowed}}{{range $i, $u := .Allowed}}{{if $i}}, {{end}}{{$u}}{{end}}{{else}}&mdash;{{end}}</div>
+        <div class="ink-faint" style="font-size:11px">Telegram user IDs</div>
+      </div>
+    </div>
+
+    <!-- ====== MAIN GRID ====== -->
+    <div class="cons-grid">
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- SESSIONS TABLE -->
+        <div class="sessions corner" id="sessions">
+          <div class="panel-head">
+            <div>
+              <span class="kicker">LIVE SESSIONS</span>
+              <span class="ink-faint" style="margin-left:12px;font-size:11px">{{len .Sessions}} active</span>
+            </div>
+          </div>
           {{if .Sessions}}
           <table>
-            <thead><tr><th>User</th><th>Session id</th><th>Workspace</th></tr></thead>
+            <thead><tr><th>user</th><th>session id</th><th>workspace</th></tr></thead>
             <tbody>
-            {{range .Sessions}}<tr><td><code>{{.UserID}}</code></td><td><code>{{if .SessionID}}{{.SessionID}}{{else}}—{{end}}</code></td><td><code>{{.Cwd}}</code></td></tr>{{end}}
+            {{range .Sessions}}<tr>
+              <td><span style="color:var(--phosphor)">{{.UserID}}</span></td>
+              <td class="mono ink-dim" style="font-size:12px">{{if .SessionID}}#{{.SessionID}}{{else}}&mdash;{{end}}</td>
+              <td class="mono" style="font-size:12px">{{.Cwd}}</td>
+            </tr>{{end}}
             </tbody>
           </table>
           {{else}}
-          <div style="padding:18px;text-align:center" class=muted>No active sessions. A session is created when an allowed user sends their first message.</div>
+          <div style="padding:28px;text-align:center" class="ink-faint">No active sessions. A session is created when an allowed user sends their first message.</div>
           {{end}}
         </div>
+
+        <!-- ACTIVITY FEED -->
+        <div class="sessions corner" id="activity">
+          <div class="panel-head">
+            <div>
+              <span class="kicker">ACTIVITY</span>
+              <span class="ink-faint" style="margin-left:12px;font-size:11px">last 200 events · ring buffer</span>
+            </div>
+            <span class="chip chip-green"><span class="dot ok pulse"></span> live</span>
+          </div>
+          {{if .Events}}
+          <div class="feed">
+            {{range .Events}}<div class="feed-row">
+              <span class="feed-t">{{fmtTime .Time}}</span>
+              <span class="feed-lvl {{if eq .Direction "in"}}feed-inf{{else if eq .Direction "out"}}feed-ok{{else}}feed-wrn{{end}}">{{if eq .Direction "in"}}INF{{else if eq .Direction "out"}}OUT{{else}}ERR{{end}}</span>
+              <span class="chip feed-tag {{if eq .Direction "in"}}tag-read{{else if eq .Direction "out"}}tag-bash{{else}}tag-edit{{end}}">{{.Direction}}</span>
+              <span class="feed-from">{{.UserID}}</span>
+              <span class="feed-text prose">{{.Text}}</span>
+            </div>{{end}}
+          </div>
+          {{else}}
+          <div style="padding:28px;text-align:center" class="ink-faint">No messages yet &mdash; ping <span class="mono" style="color:var(--phosphor)">@clawdy</span> on Telegram to see events flow here.</div>
+          {{end}}
+        </div>
+
+        <!-- SERVER LOG TAIL -->
+        <div class="sessions corner" id="logs" style="background:#070a0d">
+          <div class="panel-head">
+            <div>
+              <span class="kicker">SERVER LOG · tail -f</span>
+              <span class="ink-faint" style="margin-left:12px;font-size:11px">/var/log/openclaw.log</span>
+            </div>
+            <span class="chip">{{len .Logs}} lines</span>
+          </div>
+          {{if .Logs}}<pre class="logtail">{{range .Logs}}{{.}}
+{{end}}</pre>{{else}}<div style="padding:28px;text-align:center" class="ink-faint">No logs yet.</div>{{end}}
+        </div>
+
       </div>
 
-      <div id=logs class="card section-card" style="margin-top:16px">
-        <div class=hd>
-          <div class=lbl>Server logs (tail)</div>
-          <div class=count>{{len .Logs}} lines</div>
+      <!-- RIGHT RAIL -->
+      <aside class="rail">
+        <!-- Clawdy card -->
+        <div class="rail-card corner">
+          <div style="display:flex;align-items:flex-start;gap:14px">
+            <div style="color:var(--phosphor);margin-top:2px">
+              <svg width="44" height="44" viewBox="0 0 48 48" fill="none" style="filter:drop-shadow(0 0 6px rgba(120,255,170,0.6));display:block">
+                <rect x="8" y="10" width="4" height="28" fill="currentColor"/>
+                <rect x="18" y="14" width="4" height="24" fill="currentColor" opacity="0.85"/>
+                <rect x="28" y="10" width="4" height="28" fill="currentColor"/>
+                <rect x="8" y="10" width="24" height="3" fill="currentColor"/>
+                <rect x="8" y="35" width="24" height="3" fill="currentColor"/>
+                <rect x="37" y="20" width="4" height="4" fill="currentColor"><animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/></rect>
+              </svg>
+            </div>
+            <div style="flex:1">
+              <div class="eyebrow">CLAWDY · botd v1.3</div>
+              <div class="prose" style="font-size:14px;font-weight:600;color:#f5faf4;margin-top:4px">
+                I'm watching {{len .Sessions}} session{{if ne (len .Sessions) 1}}s{{end}}.
+              </div>
+              <div class="prose ink-dim" style="font-size:12.5px;line-height:1.5;margin-top:6px">
+                {{.Bot}} · uptime {{.Uptime}}
+              </div>
+            </div>
+          </div>
         </div>
-        <div class=body>
-          {{if .Logs}}<pre>{{range .Logs}}{{.}}
-{{end}}</pre>{{else}}<div class=muted>No logs yet.</div>{{end}}
-        </div>
-      </div>
 
-    </div>
-
-    <div>
-      <div id=accounts class="card section-card">
-        <div class=hd>
-          <div class=lbl>Dashboard accounts</div>
-          <div class=count>{{len .Users}} total</div>
-        </div>
-        <div class="body tight">
+        <!-- Operators -->
+        <div class="rail-card" id="accounts">
+          <div class="panel-head" style="padding:0 0 10px 0;border-bottom:1px solid var(--line)">
+            <span class="kicker">OPERATORS</span>
+            <span class="ink-faint" style="font-size:11px">{{len .Users}} total</span>
+          </div>
           {{if .Users}}
-          <table>
-            <thead><tr><th>Username</th><th>Email</th></tr></thead>
-            <tbody>
-            {{range .Users}}<tr><td><code>{{.Username}}</code></td><td>{{.Email}}</td></tr>{{end}}
-            </tbody>
-          </table>
-          {{else}}<div style="padding:14px" class=muted>No accounts provisioned.</div>{{end}}
+          <div class="op-list">
+            {{range .Users}}<div class="op-row">
+              <div class="op-av">{{slice .Username 0 2}}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:500">{{.Username}}</div>
+                <div class="ink-faint" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{.Email}}</div>
+              </div>
+              <span class="dot ok"></span>
+            </div>{{end}}
+          </div>
+          {{else}}<div class="ink-faint" style="padding:12px 0;font-size:12px">No accounts provisioned.</div>{{end}}
         </div>
-      </div>
 
-      <div class="card section-card" style="margin-top:16px">
-        <div class=hd>
-          <div class=lbl>Workspace files</div>
-          <div class=count>{{len .Files}} items</div>
-        </div>
-        <div class="body tight">
+        <!-- Workspace -->
+        <div class="rail-card">
+          <div class="panel-head" style="padding:0 0 10px 0;border-bottom:1px solid var(--line)">
+            <span class="kicker">WORKSPACE</span>
+            <span class="ink-faint mono" style="font-size:11px">{{.Workspace}}</span>
+          </div>
           {{if .Files}}
-          <table>
-            <thead><tr><th>Path</th><th style="width:72px;text-align:right">Size</th></tr></thead>
-            <tbody>
-            {{range .Files}}<tr><td><code>{{.Path}}</code></td><td style="text-align:right" class=muted>{{fmtSize .Size}}</td></tr>{{end}}
-            </tbody>
-          </table>
-          {{else}}<div style="padding:14px" class=muted>Workspace is empty.</div>{{end}}
+          <div style="margin-top:12px" class="ws-files">
+            {{range .Files}}<div class="ws-file">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l-4 4 4 4M10 4l4 4-4 4"/></svg>
+              <span class="mono" style="font-size:11.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{.Path}}</span>
+              <span class="ink-faint mono" style="font-size:11px">{{fmtSize .Size}}</span>
+            </div>{{end}}
+          </div>
+          {{else}}<div class="ink-faint" style="padding:12px 0;font-size:12px">Workspace is empty.</div>{{end}}
         </div>
-      </div>
 
-      <div class="card section-card" style="margin-top:16px">
-        <div class=hd><div class=lbl>Helpful links</div></div>
-        <div class=body style="font-size:13px;line-height:1.9">
-          {{if .HasGateway}}<div><a href="/gateway-launch">Open gateway console →</a></div>{{end}}
-          <div><a href="/api/status">/api/status (JSON)</a></div>
-          <div><a href="/health">/health</a></div>
-          <div><a href="https://github.com/anchoo2kewl/openclaw">Source on GitHub →</a></div>
+        <!-- Quick Actions -->
+        <div class="rail-card">
+          <div class="eyebrow" style="margin-bottom:12px">quick actions</div>
+          <div class="qa-grid">
+            {{if .HasGateway}}<a href="/gateway-launch" class="qa" style="text-decoration:none">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1L2 9h5l-1 6 7-8H8l1-6z"/></svg> open gateway
+            </a>{{end}}
+            <a href="/chat" class="qa" style="text-decoration:none">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h12v10H2zM4 6l2 2-2 2M8 10h4"/></svg> web chat
+            </a>
+            <a href="/api/status" class="qa" style="text-decoration:none">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8h3l2-6 4 12 2-6h3"/></svg> api status
+            </a>
+            <a href="https://github.com/anchoo2kewl/openclaw" class="qa" style="text-decoration:none" target="_blank" rel="noreferrer">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3a2 2 0 0 1 2-2h4v12H4a2 2 0 0 0-2 2V3zM14 3a2 2 0 0 0-2-2H8v12h4a2 2 0 0 1 2 2V3z"/></svg> source
+            </a>
+          </div>
         </div>
-      </div>
+      </aside>
     </div>
-  </div>
 
-  <div class=foot>
-    <div>refreshes every 15s · {{.Bot}}</div>
-    <div><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></div>
+    <div style="margin-top:40px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:11px;color:var(--ink-faint)">
+      <span>refreshes every 15s · {{.Bot}}</span>
+      <span><a href="https://github.com/anchoo2kewl/openclaw">github.com/anchoo2kewl/openclaw</a></span>
+    </div>
+
   </div>
-</main>
+</div>
 </body></html>`
 
 const loginHTML = `<!doctype html>
@@ -1046,27 +1474,44 @@ const loginHTML = `<!doctype html>
 <title>openclaw · sign in</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/favicon.svg">
-<meta name="theme-color" content="#0a0c10">
+<meta name="theme-color" content="#05070a">
 <style>{{.CSS}}</style>
 </head><body>
-<div class=login-wrap>
-  <form class=login method=POST action="/login">
-    <div class=brand style="gap:12px;margin-bottom:8px">
-      <div class="brand-mark lg">{{.Mark}}</div>
-      <div style="font-size:22px">openclaw</div>
+<div class="login-wrap">
+  <div class="panel corner" style="width:420px;padding:36px 36px 32px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+      <span style="width:24px;height:24px;display:grid;place-items:center;background:var(--phosphor);color:#041008;border-radius:3px;font-weight:900;font-size:14px">&#x276F;</span>
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;letter-spacing:0.1em">OPENCLAW</div>
+        <div class="eyebrow" style="margin-top:2px">operator console</div>
+      </div>
     </div>
-    <div class=sublabel>Sign in to your operator console</div>
-    <label for=identifier>Email or username</label>
-    <input id=identifier name=identifier type=text autocomplete=username autofocus required placeholder="admin">
-    <label for=password>Password</label>
-    <input id=password name=password type=password autocomplete=current-password required placeholder="••••••••">
-    <button class="btn btn-primary" type=submit>Sign in →</button>
-    {{if .Error}}<div class=err>Invalid credentials</div>{{end}}
-    <div class=foot style="margin-top:26px;padding-top:16px">
-      <a href="/">← Back to home</a>
+    <div class="prose" style="font-family:'Inter Tight',sans-serif;font-size:22px;font-weight:600;color:#f5faf4;margin-bottom:6px;letter-spacing:-0.02em">
+      Sign in
+    </div>
+    <div class="ink-dim" style="font-size:13px;margin-bottom:24px">
+      to <span class="mono" style="color:var(--phosphor)">claw.biswas.me</span>
+    </div>
+    <form method="POST" action="/login">
+      <label class="eyebrow" style="display:block;margin-bottom:6px">EMAIL OR USERNAME</label>
+      <input name="identifier" type="text" autocomplete="username" autofocus required placeholder="admin" style="width:100%;margin-bottom:16px">
+      <label class="eyebrow" style="display:block;margin-bottom:6px">PASSWORD</label>
+      <input name="password" type="password" autocomplete="current-password" required placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;" style="width:100%;margin-bottom:24px">
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px">
+        Continue <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+      </button>
+      {{if .Error}}<div class="err-msg">Invalid credentials</div>{{end}}
+    </form>
+    <hr class="divider-dashed" style="margin:24px 0 16px">
+    <div class="ink-faint" style="font-size:11px;text-align:center;line-height:1.6">
+      by signing in you accept the MIT license.<br>
+      no telemetry. your data stays on this vm.
+    </div>
+    <div style="margin-top:20px;display:flex;justify-content:space-between;font-size:12px">
+      <a href="/">&#x2190; Back to home</a>
       <a href="https://github.com/anchoo2kewl/openclaw">GitHub</a>
     </div>
-  </form>
+  </div>
 </div>
 </body></html>`
 
@@ -1074,6 +1519,15 @@ var (
 	dashTmpl = template.Must(template.New("dash").Funcs(template.FuncMap{
 		"fmtTime": func(t time.Time) string { return t.Format("15:04:05") },
 		"fmtSize": fmtSize,
+		"slice": func(s string, start, end int) string {
+			if end > len(s) {
+				end = len(s)
+			}
+			if start > len(s) {
+				return ""
+			}
+			return s[start:end]
+		},
 	}).Parse(dashboardHTML))
 
 	publicTmpl = template.Must(template.New("public").Parse(publicHTML))
@@ -1221,21 +1675,14 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
 }
 
-// faviconSVG is the brand mark — a rounded square with a hex/claw outline
-// and a centred dot, rendered with an indigo→violet gradient. Same exact
-// SVG used for /favicon.svg, the on-page brand-mark element across every
+// faviconSVG is the brand mark — a phosphor-green rounded square with a
+// "❯" chevron, matching the Phosphor Ops design system. Same exact SVG
+// used for /favicon.svg, the on-page brand-mark element across every
 // template, AND the back-bar overlay injected into the gateway HTML, so
 // the brand stays consistent on every surface.
 const faviconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#6366f1"/>
-      <stop offset="1" stop-color="#8b5cf6"/>
-    </linearGradient>
-  </defs>
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#g)"/>
-  <path d="M20 22 L32 14 L44 22 L44 42 L32 50 L20 42 Z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
-  <circle cx="32" cy="32" r="4.5" fill="#fff"/>
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="#3dff8a"/>
+  <text x="32" y="42" text-anchor="middle" font-family="monospace" font-weight="900" font-size="36" fill="#041008">&#x276F;</text>
 </svg>`
 
 // brandMarkHTML is the same SVG, marked safe for use inside templates.

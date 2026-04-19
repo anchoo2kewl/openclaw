@@ -76,26 +76,26 @@ func newGatewayProxy(target, token string, sessions *sessionStore) http.Handler 
 // the gateway reverse proxy so logged-in operators always have a visible
 // way back to the openclaw dashboard from inside the upstream Control UI.
 // The overlay is fixed-position + high z-index so it sits above the
-// gateway app regardless of the internal DOM layout. The brand mark is
-// the same SVG used by /favicon.svg and the on-page logo so all surfaces
-// share one glyph.
+// gateway app regardless of the internal DOM layout. Styled to match the
+// Phosphor Ops design system: dark terminal aesthetic, phosphor green accent.
 const backBarHTML = `<style>
-#openclaw-backbar{position:fixed;top:0;left:0;right:0;z-index:2147483647;background:rgba(11,13,16,.94);backdrop-filter:saturate(140%) blur(10px);-webkit-backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid #1f2632;color:#e6e9ef;font:500 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:9px 16px;display:flex;align-items:center;gap:14px;height:44px;box-sizing:border-box}
-#openclaw-backbar .ocb-brand{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:#e6e9ef}
-#openclaw-backbar .ocb-brand svg{width:22px;height:22px;display:block;filter:drop-shadow(0 4px 14px rgba(99,102,241,0.35))}
-#openclaw-backbar a{color:#e6e9ef;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;border:1px solid #2a3444;background:#141820;transition:background .12s ease}
-#openclaw-backbar a:hover{background:#1f2632}
-#openclaw-backbar .tag{color:#8b94a8;font-weight:400;padding-left:2px}
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+#openclaw-backbar{position:fixed;top:0;left:0;right:0;z-index:2147483647;background:rgba(5,7,10,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(120,255,170,0.08);color:#dbe6d9;font:500 12px/1 'JetBrains Mono',ui-monospace,monospace;padding:0 16px;display:flex;align-items:center;gap:14px;height:44px;box-sizing:border-box;letter-spacing:0.06em;text-transform:uppercase}
+#openclaw-backbar a{color:#dbe6d9;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:3px;border:1px solid rgba(120,255,170,0.16);background:transparent;transition:all .12s ease;font-size:11px}
+#openclaw-backbar a:hover{color:#3dff8a;border-color:#3dff8a;background:rgba(120,255,170,0.08)}
+#openclaw-backbar .ocb-brand{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:#dbe6d9;font-size:13px;letter-spacing:0.1em}
+#openclaw-backbar .ocb-mark{width:20px;height:20px;display:grid;place-items:center;background:#3dff8a;color:#041008;border-radius:3px;font-weight:900;font-size:12px;box-shadow:0 0 12px -2px #3dff8a}
+#openclaw-backbar .tag{color:#5a6a62;font-weight:400;padding-left:2px;font-size:11px}
 #openclaw-backbar .spacer{flex:1}
 body{padding-top:44px !important}
 </style>
 <div id="openclaw-backbar">
-  <a href="/" title="Back to openclaw dashboard">← Dashboard</a>
+  <a href="/" title="Back to openclaw dashboard">&#x2190; Dashboard</a>
   <div class="ocb-brand">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="gocb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="14" fill="url(#gocb)"/><path d="M20 22 L32 14 L44 22 L44 42 L32 50 L20 42 Z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/><circle cx="32" cy="32" r="4.5" fill="#fff"/></svg>
-    <span>openclaw</span><span class=tag>· gateway</span>
+    <span class="ocb-mark">&#x276F;</span>
+    <span>OPENCLAW</span><span class="tag">&#xB7; gateway</span>
   </div>
-  <div class=spacer></div>
+  <div class="spacer"></div>
   <a href="/logout-nav" onclick="event.preventDefault();fetch('/logout',{method:'POST',credentials:'same-origin'}).then(()=>location.href='/')">Log out</a>
 </div>
 `
