@@ -46,6 +46,19 @@ func searchLearn(ctx context.Context, apiKey, query string, limit int) (*learnSe
 	}
 	defer resp.Body.Close()
 
+	// Retry once on 503 (learn server occasionally restarts)
+	if resp.StatusCode == 503 {
+		resp.Body.Close()
+		time.Sleep(2 * time.Second)
+		req2, _ := http.NewRequestWithContext(ctx, "GET", u, nil)
+		req2.Header.Set("Authorization", "ApiKey "+apiKey)
+		resp, err = client.Do(req2)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+	}
+
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("learn API returned %d", resp.StatusCode)
 	}
