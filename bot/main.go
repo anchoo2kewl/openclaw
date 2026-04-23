@@ -144,7 +144,10 @@ func runServer() {
 		cancel()
 	}()
 
+	learnAPIKey := strings.TrimSpace(os.Getenv("LEARN_API_KEY"))
+
 	bot := NewBot(token, state, model)
+	bot.learnAPIKey = learnAPIKey
 
 	projectsFile := filepath.Join(workspace, ".claw-projects.json")
 	bot.projects = NewProjectStore(projectsFile)

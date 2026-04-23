@@ -73,6 +73,7 @@ Commands:
 /tool disable <name> — disable a tool
 /history — show recent conversation history
 /search <query> — search through past conversations
+/learn <query> — search learn.biswas.me and get Claude-enhanced answers
 /orchestrate <strategy> <task> — run multi-agent workflow
 /strategies — list available orchestration strategies
 /plugin catalog — browse available plugins
@@ -97,17 +98,18 @@ const (
 )
 
 type Bot struct {
-	token     string
-	client    *http.Client
-	state     *State
-	model     string
-	offset    int
-	sem       chan struct{}
-	scheduler *Scheduler
-	projects  *ProjectStore
-	tools     *ToolManager
-	history   *HistoryStore
-	plugins   *PluginStore
+	token       string
+	client      *http.Client
+	state       *State
+	model       string
+	offset      int
+	sem         chan struct{}
+	scheduler   *Scheduler
+	projects    *ProjectStore
+	tools       *ToolManager
+	history     *HistoryStore
+	plugins     *PluginStore
+	learnAPIKey string
 }
 
 func NewBot(token string, state *State, model string) *Bot {
@@ -154,6 +156,16 @@ func (b *Bot) send(ctx context.Context, chatID int64, text string) error {
 	params := url.Values{}
 	params.Set("chat_id", strconv.FormatInt(chatID, 10))
 	params.Set("text", text)
+	params.Set("disable_web_page_preview", "true")
+	_, err := b.api(ctx, "sendMessage", params)
+	return err
+}
+
+func (b *Bot) sendHTML(ctx context.Context, chatID int64, text string) error {
+	params := url.Values{}
+	params.Set("chat_id", strconv.FormatInt(chatID, 10))
+	params.Set("text", text)
+	params.Set("parse_mode", "HTML")
 	params.Set("disable_web_page_preview", "true")
 	_, err := b.api(ctx, "sendMessage", params)
 	return err
@@ -605,6 +617,55 @@ func (b *Bot) handleTextMessage(ctx context.Context, m *tgMessage, uid int64, te
 			_ = b.send(ctx, m.Chat.ID, chunk)
 		}
 		return
+	case strings.HasPrefix(text, "/learn "):
+		query := strings.TrimSpace(strings.TrimPrefix(text, "/learn "))
+		if query == "" {
+			_ = b.send(ctx, m.Chat.ID, "Usage: /learn <query>\nExample: /learn design a rate limiter")
+			return
+		}
+		if b.learnAPIKey == "" {
+			_ = b.send(ctx, m.Chat.ID, "❌ Learn search not configured (LEARN_API_KEY not set)")
+			return
+		}
+		b.typing(ctx, m.Chat.ID)
+		b.state.Record(uid, "in", text)
+
+		results, err := searchLearn(ctx, b.learnAPIKey, query, 5)
+		if err != nil {
+			_ = b.send(ctx, m.Chat.ID, "❌ Learn search failed: "+err.Error())
+			return
+		}
+
+		msg := formatLearnResultsHTML(query, results.Results)
+
+		// If there are results, also ask Claude to synthesize an answer
+		if len(results.Results) > 0 {
+			sess := b.state.Session(uid)
+			var context strings.Builder
+			fmt.Fprintf(&context, "The user searched learn.biswas.me for: \"%s\"\n\n", query)
+			context.WriteString("Here are the top search results from their learning platform:\n\n")
+			for i, r := range results.Results {
+				fmt.Fprintf(&context, "Result %d: %s (from %s > %s)\n", i+1, r.PageTitle, r.CourseTitle, r.SectionTitle)
+				fmt.Fprintf(&context, "Snippet: %s\n\n", r.Snippet)
+			}
+			context.WriteString("\nBased on these search results, provide a concise answer to their question. ")
+			context.WriteString("Reference which course/section the information comes from. Keep it under 500 words.")
+
+			// Send search results first
+			_ = b.sendHTML(ctx, m.Chat.ID, msg)
+
+			// Then get Claude's enhanced answer
+			b.typing(ctx, m.Chat.ID)
+			answer, err := runClaude(ctx, sess, b.model, context.String())
+			if err == nil && answer != "" {
+				_ = b.send(ctx, m.Chat.ID, "🤖 Claude's summary:\n\n"+answer)
+				b.state.Record(uid, "out", answer)
+			}
+		} else {
+			_ = b.sendHTML(ctx, m.Chat.ID, msg)
+		}
+		return
+
 	case text == "/strategies":
 		_ = b.send(ctx, m.Chat.ID, ListStrategies())
 		return
