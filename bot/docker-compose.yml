@@ -63,7 +63,7 @@ services:
     restart: unless-stopped
     env_file:
       - /opt/openclaw/hermes.env
-    command: ["web", "--port", "9119", "--insecure"]
+    command: ["dashboard", "--port", "9119", "--insecure"]
     environment:
       HERMES_HOME: /opt/data
     volumes:
