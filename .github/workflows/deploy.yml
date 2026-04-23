@@ -27,10 +27,17 @@ jobs:
           sudo rsync -a --delete $GITHUB_WORKSPACE/seeds/ $INSTALL_DIR/seeds/
           sudo chmod -R 755 $INSTALL_DIR/scripts/
 
+      - name: Pre-build cleanup
+        run: |
+          echo "Pruning build cache to prevent disk exhaustion..."
+          sudo docker builder prune -af >/dev/null 2>&1 || true
+          sudo docker image prune -f >/dev/null 2>&1 || true
+          df -h / | tail -1
+
       - name: Build bot image
         run: |
-          echo "Building bot image..."
-          sudo docker compose -f /opt/openclaw/bot/docker-compose.yml build --no-cache
+          echo "Building bot image (with cache)..."
+          sudo docker compose -f /opt/openclaw/bot/docker-compose.yml build bot
 
       - name: Restart containers
         run: |
@@ -40,6 +47,13 @@ jobs:
           echo "Waiting for startup..."
           sleep 5
           sudo docker compose -f /opt/openclaw/bot/docker-compose.yml ps
+
+      - name: Post-build cleanup
+        run: |
+          sudo docker builder prune -af >/dev/null 2>&1 || true
+          sudo docker image prune -f >/dev/null 2>&1 || true
+          echo "Disk after cleanup:"
+          df -h / | tail -1
 
       - name: Health check
         run: |
