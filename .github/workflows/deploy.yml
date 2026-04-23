@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Sync source to install directory
         run: |
@@ -20,7 +22,9 @@ jobs:
           echo "Syncing source files..."
           sudo rsync -a --delete --exclude=.git --exclude=__pycache__ --exclude=openclaw $GITHUB_WORKSPACE/bot/ $INSTALL_DIR/bot/
           sudo rsync -a --delete --exclude=.git $GITHUB_WORKSPACE/gateway/ $INSTALL_DIR/gateway/
+          sudo rsync -a --delete --exclude=.git --exclude=node_modules --exclude=.venv --exclude=__pycache__ $GITHUB_WORKSPACE/hermes/ $INSTALL_DIR/hermes/
           sudo rsync -a --delete --exclude=.git $GITHUB_WORKSPACE/scripts/ $INSTALL_DIR/scripts/
+          sudo rsync -a --delete $GITHUB_WORKSPACE/seeds/ $INSTALL_DIR/seeds/
           sudo chmod -R 755 $INSTALL_DIR/scripts/
 
       - name: Build bot image

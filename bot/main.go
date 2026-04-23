@@ -114,6 +114,7 @@ func runServer() {
 
 	gatewayURL := strings.TrimSpace(os.Getenv("GATEWAY_URL"))
 	gatewayToken := strings.TrimSpace(os.Getenv("OPENCLAW_GATEWAY_TOKEN"))
+	hermesURL := strings.TrimSpace(os.Getenv("HERMES_URL"))
 
 	log.Info().
 		Str("bot", botName).
@@ -123,6 +124,7 @@ func runServer() {
 		Int("dashboard_accounts", len(users.List())).
 		Str("dashboard_port", port).
 		Bool("gateway_proxy", gatewayURL != "").
+		Bool("hermes_proxy", hermesURL != "").
 		Msg("openclaw starting")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -158,6 +160,7 @@ func runServer() {
 			Users:        users,
 			GatewayURL:   gatewayURL,
 			GatewayToken: gatewayToken,
+			HermesURL:    hermesURL,
 			Bot:          bot,
 		}),
 		ReadTimeout:       10 * time.Second,

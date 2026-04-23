@@ -17,6 +17,17 @@
     rsync_opts:
       - "--exclude=.git"
 
+- name: Sync hermes source to host
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../hermes/"
+    dest: "{{ claw_install_dir }}/hermes/"
+    delete: true
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=__pycache__"
+      - "--exclude=node_modules"
+      - "--exclude=.venv"
+
 - name: Sync helper scripts
   ansible.posix.synchronize:
     src: "{{ playbook_dir }}/../../scripts/"
@@ -62,6 +73,14 @@
     state: directory
     owner: "10002"
     group: "10002"
+    mode: "0750"
+
+- name: Ensure hermes data directory exists (bind-mounted into hermes container)
+  ansible.builtin.file:
+    path: "{{ claw_install_dir }}/hermes-data"
+    state: directory
+    owner: "10000"
+    group: "10000"
     mode: "0750"
 
 - name: Ensure OPENCLAW_GATEWAY_TOKEN exists in /opt/openclaw/.env
@@ -121,6 +140,68 @@
       ANTHROPIC_API_KEY={{ claude_oauth_value.stdout }}
       CLAUDE_CODE_OAUTH_TOKEN={{ claude_oauth_value.stdout }}
   no_log: true
+
+- name: Read TELEGRAM_ALLOWED_USER_IDS from /opt/openclaw/.env
+  ansible.builtin.shell: |
+    awk -F= '/^TELEGRAM_ALLOWED_USER_IDS=/{print $2}' {{ claw_install_dir }}/.env
+  register: telegram_user_ids_value
+  changed_when: false
+
+- name: Deploy placeholder hermes.env if missing
+  ansible.builtin.copy:
+    dest: "{{ claw_install_dir }}/hermes.env"
+    mode: "0600"
+    owner: "10000"
+    group: "10000"
+    force: false
+    content: |
+      # Scoped secrets for the hermes-agent container.
+      # Populate LLM provider keys here, then restart the stack.
+      OPENROUTER_API_KEY=
+      # Optional tool API keys
+      EXA_API_KEY=
+      FIRECRAWL_API_KEY=
+      FAL_KEY=
+      # Telegram integration — uses a SEPARATE bot from openclaw.
+      # Create a new bot via @BotFather (e.g. @hermes_claw_bot).
+      # Uses the same Telegram user ID as openclaw for delivery.
+      TELEGRAM_BOT_TOKEN=
+      TELEGRAM_ALLOWED_USERS={{ telegram_user_ids_value.stdout }}
+      TELEGRAM_HOME_CHANNEL={{ telegram_user_ids_value.stdout }}
+      TELEGRAM_HOME_CHANNEL_NAME=Anshuman
+
+- name: Seed hermes scripts directory
+  ansible.builtin.file:
+    path: "{{ claw_install_dir }}/hermes-data/scripts"
+    state: directory
+    owner: "10000"
+    group: "10000"
+    mode: "0700"
+
+- name: Deploy HN top 10 cron script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../seeds/hermes-scripts/hackernews_top10.py"
+    dest: "{{ claw_install_dir }}/hermes-data/scripts/hackernews_top10.py"
+    owner: "10000"
+    group: "10000"
+    mode: "0600"
+
+- name: Seed hermes cron directory
+  ansible.builtin.file:
+    path: "{{ claw_install_dir }}/hermes-data/cron"
+    state: directory
+    owner: "10000"
+    group: "10000"
+    mode: "0700"
+
+- name: Seed hermes cron jobs if absent
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../seeds/hermes-cron/jobs.json"
+    dest: "{{ claw_install_dir }}/hermes-data/cron/jobs.json"
+    owner: "10000"
+    group: "10000"
+    mode: "0600"
+    force: false
 
 - name: Seed users.json inside data dir if absent
   ansible.builtin.copy:

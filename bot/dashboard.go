@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,6 +30,7 @@ type dashView struct {
 	Authed     bool
 	Email      string // logged-in user, only set on authed view
 	HasGateway bool
+	HasHermes  bool
 	Users      []UserRow
 	Sessions   []Session
 	Events     []Event
@@ -1228,6 +1230,7 @@ const dashboardHTML = `<!doctype html>
       <a href="#accounts">Accounts</a>
       <a href="#logs">Logs</a>
       {{if .HasGateway}}<a href="/gateway-launch">Gateway &#x2197;</a>{{end}}
+      {{if .HasHermes}}<a href="/hermes-launch">Hermes &#x2197;</a>{{end}}
     </nav>
     <div class="gnav-right">
       <span><span class="dot ok"></span> {{.Email}}</span>
@@ -1254,6 +1257,9 @@ const dashboardHTML = `<!doctype html>
       <div style="display:flex;gap:8px;align-items:center">
         {{if .HasGateway}}<a href="/gateway-launch" class="btn btn-primary">
           Open gateway <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4v4M14 2L7 9M12 8v6H2V4h6"/></svg>
+        </a>{{end}}
+        {{if .HasHermes}}<a href="/hermes-launch" class="btn" style="border-color:var(--cyan);color:var(--cyan)">
+          Open hermes <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4v4M14 2L7 9M12 8v6H2V4h6"/></svg>
         </a>{{end}}
       </div>
     </div>
@@ -1304,6 +1310,60 @@ const dashboardHTML = `<!doctype html>
         <div class="sub-val mono" style="word-break:break-all">{{if .Allowed}}{{range $i, $u := .Allowed}}{{if $i}}, {{end}}{{$u}}{{end}}{{else}}&mdash;{{end}}</div>
         <div class="ink-faint" style="font-size:11px">Telegram user IDs</div>
       </div>
+    </div>
+
+    <!-- ====== SERVICES PANEL ====== -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:20px">
+      <div class="panel corner" style="padding:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <span class="dot ok pulse"></span>
+          <span class="kicker">CLAW</span>
+          <span class="chip chip-green" style="margin-left:auto">online</span>
+        </div>
+        <div style="font-size:12px;color:var(--ink-dim);line-height:1.8">
+          <div><span class="ink-faint">type</span> <span class="mono">Claude Code</span></div>
+          <div><span class="ink-faint">port</span> <span class="mono">8080</span></div>
+          <div><span class="ink-faint">uptime</span> <span class="mono">{{.Uptime}}</span></div>
+          <div><span class="ink-faint">model</span> <span class="mono">{{.Model}}</span></div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <a href="/chat" class="btn" style="padding:6px 12px;font-size:10px">Web Chat</a>
+          {{if .HasGateway}}<a href="/gateway-launch" class="btn" style="padding:6px 12px;font-size:10px">Gateway</a>{{end}}
+        </div>
+      </div>
+      {{if .HasHermes}}
+      <div class="panel corner" style="padding:20px" id="hermes-svc">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <span class="dot idle" id="hermes-dot"></span>
+          <span class="kicker" style="color:var(--cyan)">HERMES</span>
+          <span class="chip chip-cyan" style="margin-left:auto" id="hermes-chip">checking</span>
+        </div>
+        <div style="font-size:12px;color:var(--ink-dim);line-height:1.8">
+          <div><span class="ink-faint">type</span> <span class="mono">Nous Research Agent</span></div>
+          <div><span class="ink-faint">port</span> <span class="mono">9119</span></div>
+          <div><span class="ink-faint">proxy</span> <span class="mono">/hermes/</span></div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <a href="/hermes-launch" class="btn" style="padding:6px 12px;font-size:10px;border-color:var(--cyan);color:var(--cyan)">Open Dashboard</a>
+        </div>
+      </div>
+      <script>
+      (function(){
+        function poll(){
+          fetch('/api/hermes-status',{credentials:'same-origin'}).then(r=>r.json()).then(d=>{
+            var dot=document.getElementById('hermes-dot');
+            var chip=document.getElementById('hermes-chip');
+            if(d.status==='online'){
+              dot.className='dot ok pulse';chip.className='chip chip-green';chip.textContent='online';
+            }else{
+              dot.className='dot err';chip.className='chip chip-amber';chip.textContent='offline';
+            }
+          }).catch(()=>{});
+        }
+        poll();setInterval(poll,15000);
+      })();
+      </script>
+      {{end}}
     </div>
 
     <!-- ====== MAIN GRID ====== -->
@@ -1444,6 +1504,9 @@ const dashboardHTML = `<!doctype html>
             {{if .HasGateway}}<a href="/gateway-launch" class="qa" style="text-decoration:none">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1L2 9h5l-1 6 7-8H8l1-6z"/></svg> open gateway
             </a>{{end}}
+            {{if .HasHermes}}<a href="/hermes-launch" class="qa" style="text-decoration:none">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v14M2 8h12M4 4l8 8M12 4l-8 8"/></svg> open hermes
+            </a>{{end}}
             <a href="/chat" class="qa" style="text-decoration:none">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h12v10H2zM4 6l2 2-2 2M8 10h4"/></svg> web chat
             </a>
@@ -1542,6 +1605,8 @@ type dashboardServer struct {
 	sessions    *sessionStore
 	gatewayURL  string
 	hasGateway  bool
+	hermesURL   string
+	hasHermes   bool
 	bot         *Bot
 	jobRunner   *JobRunner
 }
@@ -1552,6 +1617,7 @@ type DashboardConfig struct {
 	Users        *UserStore
 	GatewayURL   string // e.g. http://gateway:18789
 	GatewayToken string // shared secret for gateway.auth.token
+	HermesURL    string // e.g. http://hermes:9119
 	Bot          *Bot   // for web chat to call Claude
 }
 
@@ -1568,6 +1634,8 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 		sessions:   newSessionStore(12 * time.Hour),
 		gatewayURL: cfg.GatewayURL,
 		hasGateway: cfg.GatewayURL != "",
+		hermesURL:  cfg.HermesURL,
+		hasHermes:  cfg.HermesURL != "",
 		bot:        cfg.Bot,
 		jobRunner:  jr,
 	}
@@ -1609,6 +1677,20 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 			http.Redirect(w, r, target, http.StatusSeeOther)
 		})
 	}
+
+	if d.hasHermes {
+		hermesHandler := newHermesProxy(cfg.HermesURL, d.sessions)
+		mux.Handle("/hermes/", hermesHandler)
+		mux.Handle("/hermes", hermesHandler)
+		mux.HandleFunc("/hermes-launch", func(w http.ResponseWriter, r *http.Request) {
+			if d.sessions.authedEmail(r) == "" {
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
+			http.Redirect(w, r, "/hermes/", http.StatusSeeOther)
+		})
+	}
+	mux.HandleFunc("/api/hermes-status", d.handleHermesStatus)
 
 	mux.HandleFunc("/chat", d.handleChat)
 	mux.HandleFunc("/api/chat", d.handleChatAPI)
@@ -1656,6 +1738,7 @@ func (d *dashboardServer) renderAuthedDashboard(w http.ResponseWriter, email str
 		Authed:     true,
 		Email:      email,
 		HasGateway: d.hasGateway,
+		HasHermes:  d.hasHermes,
 		Users:      d.users.List(),
 		Sessions:   sess,
 		Events:     s.Events(),
@@ -1781,6 +1864,37 @@ func (d *dashboardServer) handleAPIStatus(w http.ResponseWriter, r *http.Request
 		"allowed_users":  s.Allowed,
 		"events":         len(s.Events()),
 	})
+}
+
+func (d *dashboardServer) handleHermesStatus(w http.ResponseWriter, r *http.Request) {
+	if d.sessions.authedEmail(r) == "" {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if !d.hasHermes {
+		_, _ = w.Write([]byte(`{"status":"not_configured"}`))
+		return
+	}
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(d.hermesURL + "/api/status")
+	if err != nil {
+		_, _ = w.Write([]byte(`{"status":"offline"}`))
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		_, _ = w.Write([]byte(`{"status":"offline"}`))
+		return
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_, _ = w.Write([]byte(`{"status":"online","detail":`))
+	if len(body) > 0 {
+		_, _ = w.Write(body)
+	} else {
+		_, _ = w.Write([]byte("{}"))
+	}
+	_, _ = w.Write([]byte("}"))
 }
 
 func (d *dashboardServer) handleHistoryAPI(w http.ResponseWriter, r *http.Request) {

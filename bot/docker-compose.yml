@@ -16,6 +16,7 @@ services:
       # Point the reverse proxy at the sibling gateway container. The Go
       # dashboard gates this with its own login cookie before forwarding.
       GATEWAY_URL: http://gateway:18789
+      HERMES_URL: http://hermes:9119
     volumes:
       - /opt/openclaw/workspace:/workspace
       - /opt/openclaw/claude-home:/home/claw/.claude
@@ -25,6 +26,7 @@ services:
       - "127.0.0.1:8080:8080"
     depends_on:
       - gateway
+      - hermes
     networks:
       - openclaw
 
@@ -49,6 +51,27 @@ services:
     # should ever reach the gateway.
     expose:
       - "18789"
+    networks:
+      - openclaw
+
+  hermes:
+    build:
+      context: ../hermes
+      dockerfile: Dockerfile
+    image: openclaw/hermes:latest
+    container_name: openclaw-hermes
+    restart: unless-stopped
+    env_file:
+      - /opt/openclaw/hermes.env
+    command: ["web", "--port", "9119", "--insecure"]
+    environment:
+      HERMES_HOME: /opt/data
+    volumes:
+      - /opt/openclaw/hermes-data:/opt/data
+    # No host port binding — only the bot (via the compose network)
+    # should ever reach hermes.
+    expose:
+      - "9119"
     networks:
       - openclaw
 
