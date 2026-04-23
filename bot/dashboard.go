@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -274,6 +275,24 @@ a:hover { opacity: 0.8; }
 .container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
 .divider { border: none; height: 1px; background: var(--line); margin: 0; }
 .divider-dashed { border: none; border-top: 1px dashed var(--line-hi); }
+
+/* Toggle switch */
+.toggle { position:relative; display:inline-block; width:36px; height:20px; }
+.toggle input { opacity:0; width:0; height:0; position:absolute; }
+.toggle .slider { position:absolute; cursor:pointer; inset:0; background:var(--bg-2); border:1px solid var(--line-hi); border-radius:10px; transition:0.2s; }
+.toggle .slider::before { content:''; position:absolute; width:14px; height:14px; left:2px; top:2px; background:var(--ink-faint); border-radius:50%; transition:0.2s; }
+.toggle input:checked + .slider { background:rgba(120,255,170,0.15); border-color:var(--phosphor); }
+.toggle input:checked + .slider::before { transform:translateX(16px); background:var(--phosphor); }
+/* Brief card */
+.brief-card { padding:20px; transition:border-color 0.15s; }
+.brief-card:hover { border-color:var(--line-hi); }
+.brief-actions { display:flex; gap:6px; margin-top:14px; }
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; z-index:100; background:rgba(5,7,10,0.85); backdrop-filter:blur(8px); justify-content:center; align-items:center; }
+.modal-overlay.open { display:flex; }
+.modal-body { width:520px; max-height:80vh; overflow-y:auto; padding:32px; }
+.modal-body label { display:block; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:4px; margin-top:14px; }
+.modal-body input, .modal-body select, .modal-body textarea { width:100%; box-sizing:border-box; }
 
 /* Brand logo */
 .claw-logo {
@@ -1226,6 +1245,7 @@ const dashboardHTML = `<!doctype html>
     </a>
     <nav class="gnav-links">
       <a class="active" href="/">Overview</a>
+      <a href="#briefs">Briefs</a>
       <a href="#activity">Activity</a>
       <a href="#accounts">Accounts</a>
       <a href="#logs">Logs</a>
@@ -1365,6 +1385,176 @@ const dashboardHTML = `<!doctype html>
       </script>
       {{end}}
     </div>
+
+    <!-- ====== MORNING BRIEFS ====== -->
+    <div id="briefs" style="margin-bottom:32px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <span class="kicker">MORNING BRIEFS</span>
+          <span class="ink-faint" style="margin-left:12px;font-size:11px" id="briefs-count"></span>
+        </div>
+        <button class="btn btn-primary" onclick="openBriefModal()" style="padding:6px 14px;font-size:10px">+ New Brief</button>
+      </div>
+      <div id="briefs-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px"></div>
+    </div>
+
+    <!-- Brief Edit/Create Modal -->
+    <div class="modal-overlay" id="brief-modal">
+      <div class="panel corner modal-body" id="brief-modal-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <span class="kicker" id="brief-modal-title">NEW BRIEF</span>
+          <button class="btn btn-ghost" onclick="closeBriefModal()" style="padding:4px 8px;font-size:10px">✕</button>
+        </div>
+        <input type="hidden" id="bf-id">
+        <label>Name</label>
+        <input type="text" id="bf-name" placeholder="HN Daily Top 10">
+        <label>Type</label>
+        <select id="bf-type" onchange="briefTypeChanged()">
+          <option value="hackernews">Hacker News</option>
+          <option value="worldnews">World News</option>
+          <option value="weather">Weather</option>
+          <option value="stocks">Stocks</option>
+        </select>
+        <label>Schedule (cron)</label>
+        <input type="text" id="bf-cron" placeholder="30 11 * * 1-5" value="30 11 * * 1-5">
+        <label>Display label</label>
+        <input type="text" id="bf-cron-display" placeholder="weekdays 7:30 AM EDT" value="weekdays 7:30 AM EDT">
+        <label>Telegram Chat ID</label>
+        <input type="text" id="bf-chat" placeholder="your chat id">
+        <div id="bf-cfg-count-wrap">
+          <label>Item count</label>
+          <input type="number" id="bf-count" value="10" min="1" max="50">
+        </div>
+        <div id="bf-cfg-location-wrap" style="display:none">
+          <label>Location</label>
+          <input type="text" id="bf-location" placeholder="Mississauga,Ontario,Canada">
+        </div>
+        <div id="bf-cfg-tickers-wrap" style="display:none">
+          <label>Tickers (one per line: SYMBOL,Label)</label>
+          <textarea id="bf-tickers" rows="6" placeholder="GOOGL,Google (Alphabet)&#10;BTC-USD,Bitcoin"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:20px">
+          <button class="btn btn-primary" onclick="saveBrief()" style="flex:1">Save</button>
+          <button class="btn" onclick="closeBriefModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    (function(){
+      var briefs=[];
+      var typeIcons={hackernews:'📡',worldnews:'🌍',weather:'🌤',stocks:'📊'};
+      var typeChips={hackernews:'chip-green',worldnews:'chip-cyan',weather:'chip-amber',stocks:'chip-green'};
+
+      function loadBriefs(){
+        fetch('/api/briefs',{credentials:'same-origin'}).then(r=>r.json()).then(d=>{
+          briefs=d||[];
+          renderBriefs();
+        }).catch(()=>{});
+      }
+
+      function renderBriefs(){
+        var g=document.getElementById('briefs-grid');
+        document.getElementById('briefs-count').textContent=briefs.length+' configured';
+        if(!briefs.length){g.innerHTML='<div class="panel corner" style="padding:28px;text-align:center;grid-column:1/-1"><span class="ink-faint">No briefs configured. Click "+ New Brief" to get started.</span></div>';return;}
+        var h='';
+        briefs.forEach(function(b){
+          var dotClass=!b.enabled?'dot idle':b.last_status==='ok'?'dot ok pulse':b.last_status==='error'?'dot err':'dot idle';
+          var statusText=!b.enabled?'disabled':b.last_status==='ok'?'ok':b.last_status==='error'?'error':'pending';
+          var statusChip=!b.enabled?'chip':b.last_status==='ok'?'chip chip-green':b.last_status==='error'?'chip chip-amber':'chip';
+          var lastRun=b.last_run_at?new Date(b.last_run_at).toLocaleString('en-CA',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'never';
+          var cfgSummary='';
+          if(b.type==='weather'&&b.config.location)cfgSummary='📍 '+b.config.location;
+          if(b.type==='stocks'&&b.config.tickers)cfgSummary=b.config.tickers.map(function(t){return t.symbol}).join(', ');
+          if((b.type==='hackernews'||b.type==='worldnews')&&b.config.count)cfgSummary='Top '+b.config.count+' items';
+
+          h+='<div class="panel corner brief-card">';
+          h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">';
+          h+='<span class="'+dotClass+'"></span>';
+          h+='<span class="kicker" style="flex:1">'+typeIcons[b.type]+' '+b.name+'</span>';
+          h+='<label class="toggle"><input type="checkbox" '+(b.enabled?'checked':'')+' onchange="toggleBrief(\''+b.id+'\',this.checked)"><span class="slider"></span></label>';
+          h+='</div>';
+          h+='<div style="display:flex;gap:6px;margin-bottom:10px"><span class="'+typeChips[b.type]+' chip">'+b.type+'</span><span class="chip">'+b.cron_display+'</span></div>';
+          if(cfgSummary)h+='<div class="ink-dim" style="font-size:11px;margin-bottom:8px;word-break:break-all">'+cfgSummary+'</div>';
+          h+='<div class="ink-faint" style="font-size:11px">Last run: '+lastRun+' · <span class="'+statusChip+'">'+statusText+'</span></div>';
+          if(b.last_error)h+='<div style="font-size:10px;color:var(--red);margin-top:4px;word-break:break-all">'+b.last_error+'</div>';
+          h+='<div class="brief-actions">';
+          h+='<button class="btn" style="padding:4px 10px;font-size:10px" onclick="runBrief(\''+b.id+'\')">▶ Run Now</button>';
+          h+='<button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="editBrief(\''+b.id+'\')">Edit</button>';
+          h+='<button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;color:var(--red)" onclick="deleteBrief(\''+b.id+'\')">Delete</button>';
+          h+='</div></div>';
+        });
+        g.innerHTML=h;
+      }
+
+      window.toggleBrief=function(id,enabled){
+        fetch('/api/briefs/'+id+'/toggle',{method:'PATCH',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:enabled})}).then(()=>loadBriefs());
+      };
+      window.runBrief=function(id){
+        fetch('/api/briefs/'+id+'/run',{method:'POST',credentials:'same-origin'}).then(()=>{setTimeout(loadBriefs,3000);});
+      };
+      window.deleteBrief=function(id){
+        if(!confirm('Delete this brief?'))return;
+        fetch('/api/briefs/'+id,{method:'DELETE',credentials:'same-origin'}).then(()=>loadBriefs());
+      };
+      window.editBrief=function(id){
+        var b=briefs.find(function(x){return x.id===id});
+        if(!b)return;
+        document.getElementById('brief-modal-title').textContent='EDIT BRIEF';
+        document.getElementById('bf-id').value=b.id;
+        document.getElementById('bf-name').value=b.name;
+        document.getElementById('bf-type').value=b.type;
+        document.getElementById('bf-cron').value=b.cron_expr;
+        document.getElementById('bf-cron-display').value=b.cron_display;
+        document.getElementById('bf-chat').value=b.chat_id;
+        document.getElementById('bf-count').value=b.config.count||10;
+        document.getElementById('bf-location').value=b.config.location||'';
+        if(b.config.tickers)document.getElementById('bf-tickers').value=b.config.tickers.map(function(t){return t.symbol+','+t.label}).join('\n');
+        else document.getElementById('bf-tickers').value='';
+        briefTypeChanged();
+        document.getElementById('brief-modal').classList.add('open');
+      };
+      window.openBriefModal=function(){
+        document.getElementById('brief-modal-title').textContent='NEW BRIEF';
+        document.getElementById('bf-id').value='';
+        document.getElementById('bf-name').value='';
+        document.getElementById('bf-type').value='hackernews';
+        document.getElementById('bf-cron').value='30 11 * * 1-5';
+        document.getElementById('bf-cron-display').value='weekdays 7:30 AM EDT';
+        document.getElementById('bf-chat').value='';
+        document.getElementById('bf-count').value='10';
+        document.getElementById('bf-location').value='';
+        document.getElementById('bf-tickers').value='';
+        briefTypeChanged();
+        document.getElementById('brief-modal').classList.add('open');
+      };
+      window.closeBriefModal=function(){document.getElementById('brief-modal').classList.remove('open');};
+      window.briefTypeChanged=function(){
+        var t=document.getElementById('bf-type').value;
+        document.getElementById('bf-cfg-count-wrap').style.display=(t==='hackernews'||t==='worldnews')?'':'none';
+        document.getElementById('bf-cfg-location-wrap').style.display=(t==='weather')?'':'none';
+        document.getElementById('bf-cfg-tickers-wrap').style.display=(t==='stocks')?'':'none';
+      };
+      window.saveBrief=function(){
+        var id=document.getElementById('bf-id').value;
+        var t=document.getElementById('bf-type').value;
+        var cfg={};
+        if(t==='hackernews'||t==='worldnews')cfg.count=parseInt(document.getElementById('bf-count').value)||10;
+        if(t==='weather')cfg.location=document.getElementById('bf-location').value;
+        if(t==='stocks'){
+          var lines=document.getElementById('bf-tickers').value.trim().split('\n');
+          cfg.tickers=lines.filter(function(l){return l.trim()}).map(function(l){var p=l.split(',');return{symbol:p[0].trim(),label:(p[1]||p[0]).trim()}});
+        }
+        var body={name:document.getElementById('bf-name').value,type:t,cron_expr:document.getElementById('bf-cron').value,cron_display:document.getElementById('bf-cron-display').value,chat_id:document.getElementById('bf-chat').value,config:cfg,enabled:true};
+        var method=id?'PUT':'POST';
+        var url=id?'/api/briefs/'+id:'/api/briefs';
+        fetch(url,{method:method,credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(()=>{closeBriefModal();loadBriefs();});
+      };
+
+      loadBriefs();
+      setInterval(loadBriefs,15000);
+    })();
+    </script>
 
     <!-- ====== MAIN GRID ====== -->
     <div class="cons-grid">
@@ -1600,25 +1790,29 @@ var (
 // ---------- HTTP handlers --------------------------------------------------
 
 type dashboardServer struct {
-	state       *State
-	users       *UserStore
-	sessions    *sessionStore
-	gatewayURL  string
-	hasGateway  bool
-	hermesURL   string
-	hasHermes   bool
-	bot         *Bot
-	jobRunner   *JobRunner
+	state          *State
+	users          *UserStore
+	sessions       *sessionStore
+	gatewayURL     string
+	hasGateway     bool
+	hermesURL      string
+	hasHermes      bool
+	bot            *Bot
+	jobRunner      *JobRunner
+	briefStore     *BriefStore
+	briefScheduler *BriefScheduler
 }
 
 // DashboardConfig groups external wiring so main.go can plumb the gateway
 // reverse proxy in without the caller of NewDashboard growing each time.
 type DashboardConfig struct {
-	Users        *UserStore
-	GatewayURL   string // e.g. http://gateway:18789
-	GatewayToken string // shared secret for gateway.auth.token
-	HermesURL    string // e.g. http://hermes:9119
-	Bot          *Bot   // for web chat to call Claude
+	Users          *UserStore
+	GatewayURL     string // e.g. http://gateway:18789
+	GatewayToken   string // shared secret for gateway.auth.token
+	HermesURL      string // e.g. http://hermes:9119
+	Bot            *Bot   // for web chat to call Claude
+	BriefStore     *BriefStore
+	BriefScheduler *BriefScheduler
 }
 
 // NewDashboard builds the full HTTP handler tree. Public endpoints: /,
@@ -1636,8 +1830,10 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 		hasGateway: cfg.GatewayURL != "",
 		hermesURL:  cfg.HermesURL,
 		hasHermes:  cfg.HermesURL != "",
-		bot:        cfg.Bot,
-		jobRunner:  jr,
+		bot:            cfg.Bot,
+		jobRunner:      jr,
+		briefStore:     cfg.BriefStore,
+		briefScheduler: cfg.BriefScheduler,
 	}
 
 	mux := http.NewServeMux()
@@ -1691,6 +1887,8 @@ func NewDashboard(s *State, cfg DashboardConfig) http.Handler {
 		})
 	}
 	mux.HandleFunc("/api/hermes-status", d.handleHermesStatus)
+	mux.HandleFunc("/api/briefs", d.handleBriefs)
+	mux.HandleFunc("/api/briefs/", d.handleBriefByID)
 
 	mux.HandleFunc("/chat", d.handleChat)
 	mux.HandleFunc("/api/chat", d.handleChatAPI)
@@ -1895,6 +2093,107 @@ func (d *dashboardServer) handleHermesStatus(w http.ResponseWriter, r *http.Requ
 		_, _ = w.Write([]byte("{}"))
 	}
 	_, _ = w.Write([]byte("}"))
+}
+
+// ---------- Briefs API -------------------------------------------------------
+
+func (d *dashboardServer) handleBriefs(w http.ResponseWriter, r *http.Request) {
+	if d.sessions.authedEmail(r) == "" {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case "GET":
+		_ = json.NewEncoder(w).Encode(d.briefStore.List())
+	case "POST":
+		var b Brief
+		if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+			http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+			return
+		}
+		created, err := d.briefStore.Create(b)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusConflict)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(created)
+	default:
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+	}
+}
+
+func (d *dashboardServer) handleBriefByID(w http.ResponseWriter, r *http.Request) {
+	if d.sessions.authedEmail(r) == "" {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	// Parse: /api/briefs/{id}[/action]
+	path := strings.TrimPrefix(r.URL.Path, "/api/briefs/")
+	parts := strings.SplitN(path, "/", 2)
+	id := parts[0]
+	action := ""
+	if len(parts) > 1 {
+		action = parts[1]
+	}
+
+	switch {
+	case action == "run" && r.Method == "POST":
+		if d.briefScheduler != nil {
+			_ = d.briefScheduler.RunNow(r.Context(), id)
+		}
+		_, _ = w.Write([]byte(`{"status":"accepted"}`))
+
+	case action == "toggle" && (r.Method == "PATCH" || r.Method == "POST"):
+		var req struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+			return
+		}
+		if err := d.briefStore.SetEnabled(id, req.Enabled); err != nil {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
+		b, _ := d.briefStore.Get(id)
+		_ = json.NewEncoder(w).Encode(b)
+
+	case action == "" && r.Method == "GET":
+		b, ok := d.briefStore.Get(id)
+		if !ok {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(b)
+
+	case action == "" && r.Method == "PUT":
+		var patch Brief
+		if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+			http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+			return
+		}
+		updated, err := d.briefStore.Update(id, patch)
+		if err != nil {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(updated)
+
+	case action == "" && r.Method == "DELETE":
+		if err := d.briefStore.Delete(id); err != nil {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte(`{"status":"deleted"}`))
+
+	default:
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+	}
 }
 
 func (d *dashboardServer) handleHistoryAPI(w http.ResponseWriter, r *http.Request) {

@@ -115,6 +115,12 @@ func runServer() {
 	gatewayURL := strings.TrimSpace(os.Getenv("GATEWAY_URL"))
 	gatewayToken := strings.TrimSpace(os.Getenv("OPENCLAW_GATEWAY_TOKEN"))
 	hermesURL := strings.TrimSpace(os.Getenv("HERMES_URL"))
+	telegramChatID := strings.TrimSpace(os.Getenv("TELEGRAM_HOME_CHANNEL"))
+
+	dataDir := envOr("DATA_DIR", "/var/lib/openclaw")
+	briefsFile := filepath.Join(dataDir, "briefs.json")
+	briefStore := NewBriefStore(briefsFile, telegramChatID)
+	briefScheduler := NewBriefScheduler(briefStore, token)
 
 	log.Info().
 		Str("bot", botName).
@@ -160,8 +166,10 @@ func runServer() {
 			Users:        users,
 			GatewayURL:   gatewayURL,
 			GatewayToken: gatewayToken,
-			HermesURL:    hermesURL,
-			Bot:          bot,
+			HermesURL:      hermesURL,
+			BriefStore:     briefStore,
+			BriefScheduler: briefScheduler,
+			Bot:            bot,
 		}),
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -170,7 +178,7 @@ func runServer() {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
@@ -184,6 +192,11 @@ func runServer() {
 	go func() {
 		defer wg.Done()
 		scheduler.Run(ctx)
+	}()
+
+	go func() {
+		defer wg.Done()
+		briefScheduler.Run(ctx)
 	}()
 
 	go func() {
