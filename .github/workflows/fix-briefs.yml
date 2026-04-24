@@ -8,41 +8,35 @@ jobs:
     runs-on: [self-hosted, openclaw]
 
     steps:
-      - name: Debug hermes
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Sync compose file
         run: |
-          echo "=== All containers ==="
-          sudo docker ps -a --format "{{.Names}} {{.Status}}"
-          echo "=== Hermes logs ==="
-          sudo docker logs --tail 30 openclaw-hermes 2>&1
-          echo "=== Hermes inspect ==="
-          sudo docker inspect openclaw-hermes --format '{{.State.Status}} {{.State.ExitCode}} {{.State.Error}}' 2>&1
-          echo "=== Test hermes port ==="
-          curl -sf --max-time 5 http://localhost:9119/ 2>&1 || echo "localhost:9119 not reachable"
-          # Check if hermes is listening inside docker network
-          sudo docker exec openclaw-bot curl -sf --max-time 5 http://hermes:9119/ 2>&1 || echo "hermes:9119 not reachable from bot"
+          sudo cp $GITHUB_WORKSPACE/bot/docker-compose.yml /opt/openclaw/bot/docker-compose.yml
+          echo "Updated compose:"
+          grep command /opt/openclaw/bot/docker-compose.yml
 
-      - name: Fix hermes if down
+      - name: Recreate hermes with fixed host binding
         run: |
-          STATUS=$(sudo docker inspect openclaw-hermes --format '{{.State.Status}}' 2>/dev/null || echo "missing")
-          echo "Hermes status: $STATUS"
+          sudo docker ps -a -q --filter name=hermes | xargs -r sudo docker rm -f 2>/dev/null || true
+          sudo docker compose -f /opt/openclaw/bot/docker-compose.yml up -d 2>&1
+          echo "Waiting for hermes to start..."
+          sleep 15
 
-          if [ "$STATUS" != "running" ]; then
-            echo "Hermes not running, force recreating..."
-            sudo docker ps -a -q --filter name=hermes | xargs -r sudo docker rm -f 2>/dev/null || true
-            sudo docker compose -f /opt/openclaw/bot/docker-compose.yml up -d hermes 2>&1
-            sleep 15
-          fi
-
-          # Check if hermes web UI is actually responding
-          for i in 1 2 3 4 5; do
-            if sudo docker exec openclaw-bot curl -sf --max-time 5 http://hermes:9119/ >/dev/null 2>&1; then
-              echo "Hermes web UI responding on attempt $i"
+          for i in 1 2 3 4 5 6; do
+            if sudo docker exec openclaw-bot curl -sf --max-time 3 http://hermes:9119/ >/dev/null 2>&1; then
+              echo "Hermes responding on attempt $i"
               break
             fi
-            echo "Attempt $i: hermes not responding yet..."
+            echo "Attempt $i: waiting..."
             sleep 5
           done
 
-          echo "=== Final status ==="
+          echo "=== Status ==="
           sudo docker ps --format "{{.Names}} {{.Status}}"
+          echo "=== Hermes logs ==="
           sudo docker logs --tail 5 openclaw-hermes 2>&1
+          curl -sf http://127.0.0.1:8080/health && echo " Bot OK"
