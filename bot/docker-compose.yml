@@ -24,9 +24,17 @@ services:
     # Dashboard bound to loopback only — nginx (on host) proxies to it.
     ports:
       - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - gateway
-      - hermes
+      gateway:
+        condition: service_started
+      hermes:
+        condition: service_healthy
     networks:
       - openclaw
 
@@ -72,6 +80,12 @@ services:
     # should ever reach hermes.
     expose:
       - "9119"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9119/api/status', timeout=3)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - openclaw
 
