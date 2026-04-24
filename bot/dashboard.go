@@ -758,11 +758,11 @@ const publicHTML = `<!doctype html>
 <html lang=en><head>
 <meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
-<title>openclaw · self-hosted agent orchestration</title>
+<title>openclaw · unified AI agent control plane</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/favicon.svg">
 <meta name="theme-color" content="#05070a">
-<meta name="description" content="Self-hosted agent orchestration for teams who'd rather run Claude Code on their own metal. Spin up sandboxed sessions per operator, reach them from Telegram, keep every log on a box you own.">
+<meta name="description" content="Unified AI agent control plane on a single VM. Run Claude Code, Hermes (200+ models via OpenRouter), morning briefs, and semantic search -- all from Telegram and one dashboard.">
 <style>{{.CSS}}</style>
 </head><body>
 
@@ -776,6 +776,7 @@ const publicHTML = `<!doctype html>
     </a>
     <nav class="gnav-links">
       <a class="active" href="#product">Product</a>
+      <a href="#agents">Agents</a>
       <a href="#security">Security</a>
       <a href="#roadmap">Roadmap</a>
       <a href="https://github.com/anchoo2kewl/openclaw">Docs</a>
@@ -799,14 +800,14 @@ const publicHTML = `<!doctype html>
         <span class="dot ok" style="margin-right:8px"></span> OPENCLAW · v2026.4 · <span id="hero-clock">00:00:00</span> UTC
       </div>
       <h1 class="hero-title prose">
-        Your operators.<br>
+        Your agents.<br>
         Your VM.<br>
-        <span class="hero-hl">One command away.</span>
+        <span class="hero-hl">One dashboard.</span>
       </h1>
       <p class="hero-sub prose">
-        Openclaw is self-hosted agent orchestration for teams who'd rather run Claude Code on their own
-        metal than hand over a shell. Spin up sandboxed sessions per operator, reach them from
-        Telegram, and keep every log on a box you own.
+        Openclaw is a unified AI agent control plane running on a single VM you own.
+        Claude Code sessions, Hermes autonomous agents, scheduled morning briefs, and
+        semantic search &mdash; all reachable from Telegram and managed through one dashboard.
       </p>
       <div class="hero-cta">
         <a href="#install" class="btn btn-primary">
@@ -824,19 +825,19 @@ const publicHTML = `<!doctype html>
       </div>
       <div class="hero-stats corner">
         <div class="hs-cell">
-          <div class="eyebrow">sessions / day</div>
-          <div class="hs-num numeric">1,284</div>
-          <div class="hs-delta">+12.4% w/w</div>
+          <div class="eyebrow">agents running</div>
+          <div class="hs-num numeric">2</div>
+          <div class="hs-delta">claw + hermes</div>
         </div>
         <div class="hs-cell">
-          <div class="eyebrow">self-hosted nodes</div>
-          <div class="hs-num numeric">207</div>
-          <div class="hs-delta">across 14 orgs</div>
+          <div class="eyebrow">models available</div>
+          <div class="hs-num numeric">200+</div>
+          <div class="hs-delta">via OpenRouter</div>
         </div>
         <div class="hs-cell">
-          <div class="eyebrow">avg p95 cold start</div>
-          <div class="hs-num numeric">1.8<span style="font-size:0.5em;color:var(--ink-dim)">s</span></div>
-          <div class="hs-delta">container warm pool</div>
+          <div class="eyebrow">daily briefs</div>
+          <div class="hs-num numeric">4</div>
+          <div class="hs-delta">HN / news / wx / stocks</div>
         </div>
         <div class="hs-cell">
           <div class="eyebrow">uptime · 90d</div>
@@ -885,19 +886,44 @@ const publicHTML = `<!doctype html>
 
 <hr class="divider">
 
-<!-- ====== ARCHITECTURE ====== -->
-<section class="arch" id="topology">
+<!-- ====== TWO AGENTS ====== -->
+<section class="arch" id="agents">
   <div class="container">
     <div class="section-head">
       <div>
-        <div class="kicker">&#xA7;02 · TOPOLOGY</div>
-        <h2 class="section-title prose">One VM. Zero vendor lock-in.</h2>
+        <div class="kicker">&#xA7;02 · AGENTS</div>
+        <h2 class="section-title prose">Two agents, one control plane.</h2>
       </div>
       <p class="section-lede prose ink-dim">
-        Telegram long-polls your bot. Your bot shells into an ephemeral Claude Code
-        container. Nginx never sees inbound traffic for the bot path &mdash; it's just there
-        for health. Everything lives in a bind mount you control.
+        Claw runs Claude Code in sandboxed containers. Hermes runs autonomous AI
+        with skill learning and 200+ models via OpenRouter. Both are reachable from Telegram,
+        both managed from the same dashboard at claw.biswas.me.
       </p>
+    </div>
+
+    <div class="sec-grid" style="grid-template-columns:1fr 1fr;margin-bottom:48px">
+      <div class="sec-card">
+        <div class="sec-card-head">
+          <div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h12v10H2zM4 6l2 2-2 2M8 10h4"/></svg></div>
+          <span class="eyebrow">CLAW</span>
+        </div>
+        <div class="sec-card-title prose">Claude Code Agent</div>
+        <div class="sec-card-desc prose ink-dim">
+          The original. Telegram bot + web chat that spawns ephemeral Claude Code sessions.
+          YOLO mode, sandboxed containers, workspace bind mounts. Every tool call logged.
+        </div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-card-head">
+          <div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v2M8 13v2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M1 8h2M13 8h2M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/><circle cx="8" cy="8" r="3"/></svg></div>
+          <span class="eyebrow">HERMES</span>
+        </div>
+        <div class="sec-card-title prose">Nous Research Agent</div>
+        <div class="sec-card-desc prose ink-dim">
+          Autonomous AI agent with skill learning and multi-model support.
+          200+ models via OpenRouter, persistent context, and its own gateway at hermes.biswas.me.
+        </div>
+      </div>
     </div>
 
     <div class="arch-diagram panel corner">
@@ -911,7 +937,7 @@ const publicHTML = `<!doctype html>
         <div class="arch-node" data-idx="1">
           <div class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1l6 2v4c0 4-2.5 7-6 8-3.5-1-6-4-6-8V3l6-2z"/></svg></div>
           <div class="arch-node-label">Bot</div>
-          <div class="arch-node-sub">python · allowlist</div>
+          <div class="arch-node-sub">Go · allowlist</div>
         </div>
         <div class="arch-edge"><div class="arch-edge-line"></div><div class="arch-edge-label">exec</div></div>
         <div class="arch-node" data-idx="2">
@@ -919,8 +945,20 @@ const publicHTML = `<!doctype html>
           <div class="arch-node-label">Claude Code</div>
           <div class="arch-node-sub">docker · /workspace</div>
         </div>
-        <div class="arch-edge"><div class="arch-edge-line"></div><div class="arch-edge-label">bind</div></div>
+        <div class="arch-edge"><div class="arch-edge-line"></div><div class="arch-edge-label">proxy</div></div>
         <div class="arch-node" data-idx="3">
+          <div class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v2M8 13v2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M1 8h2M13 8h2M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/><circle cx="8" cy="8" r="3"/></svg></div>
+          <div class="arch-node-label">Hermes</div>
+          <div class="arch-node-sub">docker · OpenRouter</div>
+        </div>
+        <div class="arch-edge"><div class="arch-edge-line"></div><div class="arch-edge-label">cron</div></div>
+        <div class="arch-node" data-idx="4">
+          <div class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M8 4v4l3 3"/></svg></div>
+          <div class="arch-node-label">Briefs</div>
+          <div class="arch-node-sub">scheduled delivery</div>
+        </div>
+        <div class="arch-edge"><div class="arch-edge-line"></div><div class="arch-edge-label">bind</div></div>
+        <div class="arch-node" data-idx="5">
           <div class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2h12v5H2zM2 9h12v5H2zM5 5h.01M5 12h.01"/></svg></div>
           <div class="arch-node-label">Your VM</div>
           <div class="arch-node-sub">nginx · cloudflare</div>
@@ -928,10 +966,53 @@ const publicHTML = `<!doctype html>
       </div>
 
       <div class="arch-details">
-        <div><div class="eyebrow">outbound only</div><div class="ink-dim" style="font-size:12px;margin-top:4px">No inbound port needed for the bot itself.</div></div>
-        <div><div class="eyebrow">UFW · 22/80/443</div><div class="ink-dim" style="font-size:12px;margin-top:4px">Fail2ban on sshd, CF-proxied DNS.</div></div>
-        <div><div class="eyebrow">workspace volume</div><div class="ink-dim" style="font-size:12px;margin-top:4px">/opt/openclaw/workspace, host-owned.</div></div>
+        <div><div class="eyebrow">reverse proxy</div><div class="ink-dim" style="font-size:12px;margin-top:4px">Nginx routes claw.biswas.me and hermes.biswas.me to separate containers.</div></div>
+        <div><div class="eyebrow">3 containers</div><div class="ink-dim" style="font-size:12px;margin-top:4px">bot (Go), gateway (Caddy), hermes (Node) -- all Docker-managed.</div></div>
+        <div><div class="eyebrow">health checks</div><div class="ink-dim" style="font-size:12px;margin-top:4px">Docker health checks with auto-recovery on failure.</div></div>
         <div><div class="eyebrow">secrets · mode 600</div><div class="ink-dim" style="font-size:12px;margin-top:4px">Never in the repo. Never in the image.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ====== MORNING BRIEFS ====== -->
+<section class="sec" id="briefs">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="kicker">&#xA7;03 · MORNING BRIEFS</div>
+        <h2 class="section-title prose">Wake up to what matters.</h2>
+      </div>
+      <p class="section-lede prose ink-dim">
+        Scheduled daily digests delivered straight to Telegram. Four brief types,
+        cron scheduling, full CRUD via the dashboard REST API, and HTML-formatted results.
+      </p>
+    </div>
+    <div class="sec-grid">
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2h12v12H2zM2 6h12M6 2v12"/></svg></div><span class="eyebrow">BRIEF · HN</span></div><div class="sec-card-title prose">Hacker News</div><div class="sec-card-desc prose ink-dim">Top stories with summaries. Configurable story count and comment depth.</div></div>
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="7"/><path d="M1 8h14M8 1a10 10 0 0 1 3 7 10 10 0 0 1-3 7 10 10 0 0 1-3-7 10 10 0 0 1 3-7"/></svg></div><span class="eyebrow">BRIEF · NEWS</span></div><div class="sec-card-title prose">World News</div><div class="sec-card-desc prose ink-dim">Headlines from major sources, grouped by region. AI-summarized for quick scanning.</div></div>
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a5 5 0 0 0-5 5c0 2 1 3 2 4l1 3h4l1-3c1-1 2-2 2-4a5 5 0 0 0-5-5zM6 14h4"/></svg></div><span class="eyebrow">BRIEF · WEATHER</span></div><div class="sec-card-title prose">Weather</div><div class="sec-card-desc prose ink-dim">Local forecast with temperature, precipitation, and wind. Multi-day outlook.</div></div>
+      <div class="sec-card"><div class="sec-card-head"><div class="sec-card-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14l3-3 2 2 4-4 3 3M2 2v12h12"/></svg></div><span class="eyebrow">BRIEF · STOCKS</span></div><div class="sec-card-title prose">Stocks</div><div class="sec-card-desc prose ink-dim">Watchlist tracking with price, change, and volume. Pre-market and after-hours data.</div></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ====== SEMANTIC SEARCH ====== -->
+<section class="install" id="search" style="padding:48px 0">
+  <div class="container">
+    <div class="install-wrap panel-hi corner" style="padding:32px 40px">
+      <div style="flex:1">
+        <div class="kicker">&#xA7;04 · SEMANTIC SEARCH</div>
+        <h2 class="section-title prose" style="margin-top:8px">/learn &mdash; search smarter.</h2>
+        <p class="prose ink-dim" style="font-size:15px;line-height:1.6;max-width:520px">
+          The <span class="mono" style="color:var(--phosphor)">/learn</span> command searches
+          learn.biswas.me and enhances results with Claude. Get summaries, relevant excerpts,
+          and direct links &mdash; all from Telegram.
+        </p>
       </div>
     </div>
   </div>
@@ -944,7 +1025,7 @@ const publicHTML = `<!doctype html>
   <div class="container">
     <div class="section-head">
       <div>
-        <div class="kicker">&#xA7;03 · POSTURE</div>
+        <div class="kicker">&#xA7;05 · POSTURE</div>
         <h2 class="section-title prose">Security that a paranoid SRE won't sigh at.</h2>
       </div>
       <p class="section-lede prose ink-dim">
@@ -971,7 +1052,7 @@ const publicHTML = `<!doctype html>
   <div class="container">
     <div class="install-wrap panel-hi corner">
       <div class="install-left">
-        <div class="kicker">&#xA7;04 · INSTALL</div>
+        <div class="kicker">&#xA7;06 · INSTALL</div>
         <h2 class="section-title prose" style="margin-top:8px">One command. One VM. Five minutes.</h2>
         <p class="prose ink-dim" style="font-size:15px;line-height:1.6;max-width:460px">
           Bootstrap issues a Cloudflare origin cert, hardens the box via Ansible,
@@ -1024,7 +1105,7 @@ const publicHTML = `<!doctype html>
   <div class="container">
     <div class="section-head">
       <div>
-        <div class="kicker">&#xA7;05 · TRAJECTORY</div>
+        <div class="kicker">&#xA7;07 · TRAJECTORY</div>
         <h2 class="section-title prose">Shipping weekly. Public forever.</h2>
       </div>
       <p class="section-lede prose ink-dim">
@@ -1037,41 +1118,41 @@ const publicHTML = `<!doctype html>
         <div class="rm-entry">
           <div class="rm-bullet"><span class="dot ok pulse"></span></div>
           <div>
-            <div class="rm-head"><span class="rm-ver">v2026.4.15</span><span class="chip chip-green">current</span><span class="ink-faint" style="margin-left:auto;font-size:11px">Apr 15, 2026</span></div>
-            <ul class="rm-notes"><li>Multi-operator allowlist</li><li>Activity ring buffer · 200 events</li><li>Origin CA auto-rotation</li></ul>
+            <div class="rm-head"><span class="rm-ver">v2026.4.23</span><span class="chip chip-green">current</span><span class="ink-faint" style="margin-left:auto;font-size:11px">Apr 23, 2026</span></div>
+            <ul class="rm-notes"><li>Hermes agent integration (multi-model AI via OpenRouter)</li><li>Morning briefs engine (HN, news, weather, stocks)</li><li>Unified control plane dashboard</li><li>Briefs REST API with full CRUD</li><li>Semantic search (/learn) with Claude enhancement</li><li>Docker health checks + auto-recovery</li><li>Automated disk cleanup cron</li></ul>
           </div>
         </div>
         <div class="rm-entry">
           <div class="rm-bullet"><span class="dot warn"></span></div>
           <div>
             <div class="rm-head"><span class="rm-ver">v2026.5.0</span><span class="chip chip-amber">next</span><span class="ink-faint" style="margin-left:auto;font-size:11px">May 2026</span></div>
-            <ul class="rm-notes"><li>Gateway SSO (OIDC)</li><li>Per-operator workspace quotas</li><li>Slack + Discord adapters</li></ul>
+            <ul class="rm-notes"><li>Streaming web chat responses (SSE)</li><li>More brief types (Reddit, GitHub trending, crypto alerts)</li><li>Brief result history viewer in dashboard</li><li>learn.biswas.me integration in dashboard UI</li></ul>
           </div>
         </div>
         <div class="rm-entry">
           <div class="rm-bullet"><span class="dot idle"></span></div>
           <div>
             <div class="rm-head"><span class="rm-ver">v2026.6.0</span><span class="chip">planned</span><span class="ink-faint" style="margin-left:auto;font-size:11px">Jun 2026</span></div>
-            <ul class="rm-notes"><li>Multi-VM fleet mode</li><li>Policy-as-code (OPA)</li><li>Managed-cloud beta</li></ul>
+            <ul class="rm-notes"><li>Agent memory &mdash; persistent context across sessions</li><li>Cost tracking &mdash; token usage per user/project</li><li>Webhook result callbacks</li><li>Plugin marketplace</li></ul>
           </div>
         </div>
         <div class="rm-entry">
           <div class="rm-bullet"><span class="dot idle"></span></div>
           <div>
             <div class="rm-head"><span class="rm-ver">v2026.q4</span><span class="chip">planned</span><span class="ink-faint" style="margin-left:auto;font-size:11px">Q4 2026</span></div>
-            <ul class="rm-notes"><li>SOC 2 Type I</li><li>BYO-model runtime (vLLM, Ollama)</li><li>Audit export &#x2192; Splunk/Loki</li></ul>
+            <ul class="rm-notes"><li>Multi-VM fleet mode</li><li>BYO-model runtime (vLLM, Ollama)</li><li>Mobile app wrapper</li></ul>
           </div>
         </div>
       </div>
       <div class="rm-oss panel corner">
-        <div class="kicker" style="margin-bottom:16px">OSS · 90d</div>
+        <div class="kicker" style="margin-bottom:16px">PROJECT · 90d</div>
         <div class="rm-oss-grid">
-          <div class="rm-stat"><div class="rm-stat-v numeric">42</div><div class="eyebrow">weekly commits</div></div>
-          <div class="rm-stat"><div class="rm-stat-v numeric">17</div><div class="eyebrow">issues · open</div></div>
-          <div class="rm-stat"><div class="rm-stat-v numeric">213</div><div class="eyebrow">issues · closed</div></div>
-          <div class="rm-stat"><div class="rm-stat-v numeric">11</div><div class="eyebrow">contributors</div></div>
-          <div class="rm-stat"><div class="rm-stat-v numeric">+1.4k</div><div class="eyebrow">stars · 90d</div></div>
-          <div class="rm-stat"><div class="rm-stat-v numeric">86</div><div class="eyebrow">forks</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">3</div><div class="eyebrow">containers</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">2</div><div class="eyebrow">AI agents</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">4</div><div class="eyebrow">brief types</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">200+</div><div class="eyebrow">models</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">1</div><div class="eyebrow">VM</div></div>
+          <div class="rm-stat"><div class="rm-stat-v numeric">0</div><div class="eyebrow">vendor lock-in</div></div>
         </div>
         <hr class="divider-dashed" style="margin:20px 0">
         <div class="rm-activity" id="rm-heatmap"></div>
@@ -1088,17 +1169,18 @@ const publicHTML = `<!doctype html>
   <div class="container">
     <div class="section-head">
       <div>
-        <div class="kicker">&#xA7;06 · FAQ</div>
+        <div class="kicker">&#xA7;08 · FAQ</div>
         <h2 class="section-title prose">Things everyone asks.</h2>
       </div>
     </div>
     <div class="faq-list" id="faq-list">
-      <button class="faq-item open" data-idx="0"><div class="faq-head"><span class="faq-num">01</span><span class="faq-q">Do I need a dedicated VM?</span><span class="faq-icon">&minus;</span></div><div class="faq-a flash-in">A 2-CPU / 4GB ubuntu box is plenty. The bot is tiny; Claude Code runs in a container spawned per session. A $6/mo VPS has handled 600+ sessions a day for our main deployment.</div></button>
-      <button class="faq-item" data-idx="1"><div class="faq-head"><span class="faq-num">02</span><span class="faq-q">Why Telegram?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Because it's outbound-only. No inbound webhook, no public port, no Cloudflare Zero Trust tunnel. Your bot long-polls api.telegram.org &mdash; that's the whole ingress story. Other adapters (Slack, Discord) are on the roadmap.</div></button>
-      <button class="faq-item" data-idx="2"><div class="faq-head"><span class="faq-num">03</span><span class="faq-q">Is 'YOLO mode' safe?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">No, and that's the point. --dangerously-skip-permissions means Claude runs any tool without asking. The compensations: every session is a fresh container, the allowlist pins who can invoke it, and the workspace is the only writable mount.</div></button>
-      <button class="faq-item" data-idx="3"><div class="faq-head"><span class="faq-num">04</span><span class="faq-q">Can I self-host on bare metal?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Yes. The Ansible role targets Ubuntu 22.04 LTS. We test on Hetzner, DigitalOcean, Tencent Cloud Lighthouse, and a ThinkCentre in a closet. There is no "cloud" requirement.</div></button>
-      <button class="faq-item" data-idx="4"><div class="faq-head"><span class="faq-num">05</span><span class="faq-q">What's the license?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">MIT. You can fork it, rebrand it, sell it, host it for your team. If you build something cool, open a PR &mdash; we love merging them.</div></button>
-      <button class="faq-item" data-idx="5"><div class="faq-head"><span class="faq-num">06</span><span class="faq-q">Is a managed cloud coming?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Yes, in beta Q3. Same code, we run the VM. Same price-performance as a $6 VPS, just without the ansible step. The self-hosted flavor stays free and first-class.</div></button>
+      <button class="faq-item open" data-idx="0"><div class="faq-head"><span class="faq-num">01</span><span class="faq-q">Do I need a dedicated VM?</span><span class="faq-icon">&minus;</span></div><div class="faq-a flash-in">A 2-CPU / 4GB ubuntu box is plenty. The bot is tiny; Claude Code runs in a container spawned per session. A $6/mo VPS handles it fine.</div></button>
+      <button class="faq-item" data-idx="1"><div class="faq-head"><span class="faq-num">02</span><span class="faq-q">Why Telegram?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Because it's outbound-only. No inbound webhook, no public port. Your bot long-polls api.telegram.org &mdash; that's the whole ingress story. It also makes briefs delivery trivial: scheduled results land in the same chat you use to talk to the agents.</div></button>
+      <button class="faq-item" data-idx="2"><div class="faq-head"><span class="faq-num">03</span><span class="faq-q">What's Hermes?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Hermes is an autonomous AI agent from Nous Research with skill learning and multi-model support. It runs as a separate container behind its own gateway at hermes.biswas.me, with 200+ models available via OpenRouter. You interact with it through the same Telegram bot using the /hermes command.</div></button>
+      <button class="faq-item" data-idx="3"><div class="faq-head"><span class="faq-num">04</span><span class="faq-q">Is 'YOLO mode' safe?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">No, and that's the point. --dangerously-skip-permissions means Claude runs any tool without asking. The compensations: every session is a fresh container, the allowlist pins who can invoke it, and the workspace is the only writable mount.</div></button>
+      <button class="faq-item" data-idx="4"><div class="faq-head"><span class="faq-num">05</span><span class="faq-q">Can I self-host on bare metal?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Yes. The Ansible role targets Ubuntu 22.04 LTS. We test on Hetzner, DigitalOcean, Tencent Cloud Lighthouse, and a ThinkCentre in a closet. There is no "cloud" requirement.</div></button>
+      <button class="faq-item" data-idx="5"><div class="faq-head"><span class="faq-num">06</span><span class="faq-q">What's the license?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">MIT. You can fork it, rebrand it, sell it, host it for your team. If you build something cool, open a PR &mdash; we love merging them.</div></button>
+      <button class="faq-item" data-idx="6"><div class="faq-head"><span class="faq-num">07</span><span class="faq-q">Is a managed cloud coming?</span><span class="faq-icon">+</span></div><div class="faq-a" style="display:none">Maybe eventually. For now this is a personal project. The self-hosted flavor is the only flavor, and it stays free and first-class.</div></button>
     </div>
   </div>
 </section>
@@ -1113,7 +1195,7 @@ const publicHTML = `<!doctype html>
           <span>OPENCLAW</span>
         </div>
         <div class="prose ink-dim" style="max-width:320px;font-size:13px;line-height:1.55">
-          Self-hosted agent orchestration. Telegram-driven Claude Code. Your VM, your rules.
+          Unified AI agent control plane. Claude Code + Hermes + morning briefs + semantic search. Your VM, your rules.
         </div>
         <div style="margin-top:24px;display:flex;gap:8px">
           <a class="btn" href="https://github.com/anchoo2kewl/openclaw" target="_blank" rel="noreferrer">
@@ -1123,7 +1205,7 @@ const publicHTML = `<!doctype html>
         </div>
       </div>
       <div class="foot-cols">
-        <div><div class="eyebrow" style="margin-bottom:12px">product</div><ul class="foot-list"><li><a href="#">Overview</a></li><li><a href="/login">Console</a></li><li><a href="#">Gateway</a></li><li><a href="#">Changelog</a></li></ul></div>
+        <div><div class="eyebrow" style="margin-bottom:12px">product</div><ul class="foot-list"><li><a href="#">Overview</a></li><li><a href="/login">Console</a></li><li><a href="#agents">Agents</a></li><li><a href="#briefs">Briefs</a></li></ul></div>
         <div><div class="eyebrow" style="margin-bottom:12px">developers</div><ul class="foot-list"><li><a href="https://github.com/anchoo2kewl/openclaw">Docs</a></li><li><a href="#">API reference</a></li><li><a href="#">Ansible roles</a></li><li><a href="#security">Security</a></li></ul></div>
         <div><div class="eyebrow" style="margin-bottom:12px">community</div><ul class="foot-list"><li><a href="https://github.com/anchoo2kewl/openclaw">GitHub</a></li><li><a href="#">Discord</a></li><li><a href="#">Twitter</a></li><li><a href="#">Contributing</a></li></ul></div>
         <div><div class="eyebrow" style="margin-bottom:12px">legal</div><ul class="foot-list"><li><a href="#">MIT license</a></li><li><a href="#">Privacy</a></li><li><a href="#">Trademarks</a></li></ul></div>
@@ -1131,7 +1213,7 @@ const publicHTML = `<!doctype html>
     </div>
     <div class="foot-bot">
       <span>&copy; 2026 openclaw · MIT · <span class="ink-faint">claw.biswas.me</span></span>
-      <span class="ink-faint">&#x22EF; this page served from a single 4-CPU VM in YYZ1 &#x22EF;</span>
+      <span class="ink-faint">&#x22EF; this page served from a single 4-CPU VM &#x22EF;</span>
       <span><span class="dot ok"></span> all systems nominal</span>
     </div>
   </div>
@@ -1146,11 +1228,11 @@ setInterval(function(){
 
 // Architecture animation
 (function(){
-  var nodes=document.querySelectorAll('.arch-node'),edges=document.querySelectorAll('.arch-edge-line'),active=0;
+  var nodes=document.querySelectorAll('.arch-node'),edges=document.querySelectorAll('.arch-edge-line'),active=0,total=nodes.length;
   setInterval(function(){
     nodes.forEach(function(n){n.classList.remove('on')});
     edges.forEach(function(e){e.classList.remove('on')});
-    active=(active+1)%4;
+    active=(active+1)%total;
     nodes[active].classList.add('on');
     if(active>0)edges[active-1].classList.add('on');
   },2000);
