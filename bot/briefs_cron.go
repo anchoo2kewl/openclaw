@@ -62,12 +62,16 @@ func (bs *BriefScheduler) runBrief(ctx context.Context, b Brief) {
 		return
 	}
 
-	if b.ChatID != "" && bs.botToken != "" {
-		if err := sendBriefToTelegram(runCtx, bs.botToken, b.ChatID, msg); err != nil {
-			log.Error().Err(err).Str("brief", b.ID).Msg("brief telegram delivery failed")
-			bs.store.RecordRun(b.ID, "error", "delivery: "+err.Error())
-			return
-		}
+	if b.ChatID == "" || bs.botToken == "" {
+		log.Warn().Str("brief", b.ID).Str("chat_id", b.ChatID).Msg("brief skipped delivery: no chat_id or bot token")
+		bs.store.RecordRun(b.ID, "error", "no chat_id configured — edit the brief and set a Telegram chat ID")
+		return
+	}
+
+	if err := sendBriefToTelegram(runCtx, bs.botToken, b.ChatID, msg); err != nil {
+		log.Error().Err(err).Str("brief", b.ID).Msg("brief telegram delivery failed")
+		bs.store.RecordRun(b.ID, "error", "delivery: "+err.Error())
+		return
 	}
 
 	log.Info().Str("brief", b.ID).Msg("brief completed")
