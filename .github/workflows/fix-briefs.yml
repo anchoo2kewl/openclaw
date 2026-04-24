@@ -8,46 +8,41 @@ jobs:
     runs-on: [self-hosted, openclaw]
 
     steps:
-      - name: Fix briefs chat_id
+      - name: Debug hermes
         run: |
-          BRIEFS=/opt/openclaw/data/briefs.json
-          echo "=== Before ==="
-          sudo python3 -c "
-          import json
-          with open('$BRIEFS') as f: briefs = json.load(f)
-          for b in briefs: print(f\"{b['id']:30s} chat_id='{b.get('chat_id','')}'\")
-          "
+          echo "=== All containers ==="
+          sudo docker ps -a --format "{{.Names}} {{.Status}}"
+          echo "=== Hermes logs ==="
+          sudo docker logs --tail 30 openclaw-hermes 2>&1
+          echo "=== Hermes inspect ==="
+          sudo docker inspect openclaw-hermes --format '{{.State.Status}} {{.State.ExitCode}} {{.State.Error}}' 2>&1
+          echo "=== Test hermes port ==="
+          curl -sf --max-time 5 http://localhost:9119/ 2>&1 || echo "localhost:9119 not reachable"
+          # Check if hermes is listening inside docker network
+          sudo docker exec openclaw-bot curl -sf --max-time 5 http://hermes:9119/ 2>&1 || echo "hermes:9119 not reachable from bot"
 
-          echo "=== Fixing ==="
-          sudo python3 -c "
-          import json
-          with open('$BRIEFS') as f: briefs = json.load(f)
-          for b in briefs:
-              if not b.get('chat_id'):
-                  b['chat_id'] = '8417342395'
-                  print(f\"Fixed {b['id']}\")
-          with open('$BRIEFS', 'w') as f: json.dump(briefs, f, indent=2)
-          print('Done')
-          "
-
-          echo "=== After ==="
-          sudo python3 -c "
-          import json
-          with open('$BRIEFS') as f: briefs = json.load(f)
-          for b in briefs: print(f\"{b['id']:30s} chat_id='{b.get('chat_id','')}'\")
-          "
-
-      - name: Restart bot
+      - name: Fix hermes if down
         run: |
-          sudo docker compose -f /opt/openclaw/bot/docker-compose.yml restart bot
-          sleep 5
+          STATUS=$(sudo docker inspect openclaw-hermes --format '{{.State.Status}}' 2>/dev/null || echo "missing")
+          echo "Hermes status: $STATUS"
+
+          if [ "$STATUS" != "running" ]; then
+            echo "Hermes not running, force recreating..."
+            sudo docker ps -a -q --filter name=hermes | xargs -r sudo docker rm -f 2>/dev/null || true
+            sudo docker compose -f /opt/openclaw/bot/docker-compose.yml up -d hermes 2>&1
+            sleep 15
+          fi
+
+          # Check if hermes web UI is actually responding
+          for i in 1 2 3 4 5; do
+            if sudo docker exec openclaw-bot curl -sf --max-time 5 http://hermes:9119/ >/dev/null 2>&1; then
+              echo "Hermes web UI responding on attempt $i"
+              break
+            fi
+            echo "Attempt $i: hermes not responding yet..."
+            sleep 5
+          done
+
+          echo "=== Final status ==="
           sudo docker ps --format "{{.Names}} {{.Status}}"
-          curl -sf http://127.0.0.1:8080/health && echo " OK"
-
-      - name: Test brief run now
-        run: |
-          # Wait for bot to be ready
-          sleep 3
-          # Trigger HN brief via the run-now mechanism by writing a flag
-          echo "Briefs should deliver on next cron tick or via dashboard Run Now button"
-          echo "All briefs now have chat_id=8417342395"
+          sudo docker logs --tail 5 openclaw-hermes 2>&1
