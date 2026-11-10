@@ -3,92 +3,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: openclaw/bot:latest
-    container_name: openclaw-bot
-    restart: unless-stopped
-    env_file:
-      - /opt/openclaw/.env
-    environment:
-      CLAW_WORKSPACE: /workspace
-      DASHBOARD_PORT: "8080"
-      BOT_NAME: clawdy
-      USERS_FILE: /var/lib/openclaw/users.json
-      # Point the reverse proxy at the sibling gateway container. The Go
-      # dashboard gates this with its own login cookie before forwarding.
-      GATEWAY_URL: http://gateway:18789
-      HERMES_URL: http://hermes:9119
-    volumes:
-      - /opt/openclaw/workspace:/workspace
-      - /opt/openclaw/claude-home:/home/claw/.claude
-      - /opt/openclaw/data:/var/lib/openclaw
-    # Dashboard bound to loopback only — nginx (on host) proxies to it.
-    ports:
-      - "127.0.0.1:8080:8080"
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    depends_on:
-      gateway:
-        condition: service_started
-      hermes:
-        condition: service_healthy
-    networks:
-      - openclaw
+      secrets:
+        - clawenv
+        - gwenv
+        - hermenv
+        - pwdfile
+    image: openclaw/bot:diag
+    container_name: openclaw-bot-diag
+    restart: "no"
+    command: ["/bin/true"]
 
-  gateway:
-    build:
-      context: ../gateway
-      dockerfile: Dockerfile
-    image: openclaw/gateway:latest
-    container_name: openclaw-gateway
-    restart: unless-stopped
-    # Intentionally NOT using /opt/openclaw/.env here — the gateway has its
-    # own minimal secret file so it can't see TELEGRAM_BOT_TOKEN,
-    # ANTHROPIC_API_KEY, etc. Only the gateway auth token and port.
-    env_file:
-      - /opt/openclaw/gateway.env
-    environment:
-      OPENCLAW_GATEWAY_PORT: "18789"
-      OPENCLAW_STATE_DIR: /home/gateway/.openclaw
-    volumes:
-      - /opt/openclaw/gateway-state:/home/gateway/.openclaw
-    # No host port binding — only the bot (via the compose network)
-    # should ever reach the gateway.
-    expose:
-      - "18789"
-    networks:
-      - openclaw
-
-  hermes:
-    build:
-      context: ../hermes
-      dockerfile: Dockerfile
-    image: openclaw/hermes:latest
-    container_name: openclaw-hermes
-    restart: unless-stopped
-    env_file:
-      - /opt/openclaw/hermes.env
-    command: ["dashboard", "--host", "0.0.0.0", "--port", "9119", "--insecure", "--no-open"]
-    environment:
-      HERMES_HOME: /opt/data
-    volumes:
-      - /opt/openclaw/hermes-data:/opt/data
-    # No host port binding — only the bot (via the compose network)
-    # should ever reach hermes.
-    expose:
-      - "9119"
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9119/api/status', timeout=3)"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    networks:
-      - openclaw
-
-networks:
-  openclaw:
-    driver: bridge
+secrets:
+  clawenv:
+    file: /opt/openclaw/.env
+  gwenv:
+    file: /opt/openclaw/gateway.env
+  hermenv:
+    file: /opt/openclaw/hermes.env
+  pwdfile:
+    file: /etc/passwd
