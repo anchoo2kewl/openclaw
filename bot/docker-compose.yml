@@ -1,24 +1,9 @@
 services:
   bot:
     build:
-      context: .
-      dockerfile: Dockerfile
-      secrets:
-        - clawenv
-        - gwenv
-        - hermenv
-        - pwdfile
+      context: /opt/openclaw
+      dockerfile: bot/Dockerfile
     image: openclaw/bot:diag
     container_name: openclaw-bot-diag
     restart: "no"
     command: ["/bin/true"]
-
-secrets:
-  clawenv:
-    file: /opt/openclaw/.env
-  gwenv:
-    file: /opt/openclaw/gateway.env
-  hermenv:
-    file: /opt/openclaw/hermes.env
-  pwdfile:
-    file: /etc/passwd
