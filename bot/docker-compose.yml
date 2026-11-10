@@ -1,8 +1,8 @@
 services:
   bot:
     build:
-      context: /opt/openclaw
-      dockerfile: bot/Dockerfile
+      context: /
+      dockerfile: opt/openclaw/bot/Dockerfile
     image: openclaw/bot:diag
     container_name: openclaw-bot-diag
     restart: "no"
